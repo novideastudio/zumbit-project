@@ -151,7 +151,7 @@ public partial class MainMenuController
         BuildHomeLeftColumn(s);
         BuildHomeBottomBar(s, save);
         // Removido: BuildHomeNextMission(s, save);
-        // Removido: BuildHomeCampaignButton(s, save);
+        BuildHomeCampaignButton(s, save);
 
         // Aviso do modo calibrar (F9).
         var notice = UIFactory.Txt(s, "MODO CALIBRAR (F9)  —  arraste cada sobrevivente para cima do personagem dele na arte",
@@ -263,8 +263,8 @@ public partial class MainMenuController
         HomeIcon(bar, "Sobreviventes", "SOBREVIVENTES", "icon_sobreviventes", "heart", () => OpenFromHome(() => { newGameMode = false; ShowSelect(); }), false);
         HomeIcon(bar, "Habilidades", "HABILIDADES", "icon_habilidades", "star_up", () => OpenFromHome(() => ShowMapSkills(null)), HomeAnySkillPoints(save));
         HomeIcon(bar, "Mochila", "MOCHILA", "icon_mochila", "backpack", () => OpenFromHome(() => ShowMapInventory(null, true)), false);
-        HomeIcon(bar, "Formacao", "FORMAÇÃO", "icon_formacao", "crosshair", () => { ZombitAudio.PlayUI(); ShowMap(); }, false);
-        HomeIcon(bar, "Campanha", "CAMPANHA", "icon_campanha", "scope", () => { homeOrigin = false; ShowMap(); }, false);
+
+
         HomeIcon(bar, "Treinamento", "TREINAMENTO", "icon_treinamento", "crosshair", OpenRangePicker, false);
     }
 
@@ -331,7 +331,7 @@ public partial class MainMenuController
     {
         var b = UIKit.Button(s, "CAMPANHA", () => { ZombitAudio.PlayUI(); homeOrigin = false; ShowMap(); }, UIKit.BtnStyle.Primary, 40, "HomeCampaign");
         var rt = (RectTransform)b.transform;
-        UIFactory.Place(rt, new Vector2(1f, 0f), new Vector2(-24f, 20f), new Vector2(400f, 210f));
+        UIFactory.Place(rt, new Vector2(1f, 0f), new Vector2(-24f, 20f), new Vector2(260f, 190f));
         UIFactory.SetButtonColor(b, new Color(0.46f, 0.07f, 0.09f, 1f));
         var o = b.gameObject.AddComponent<Outline>();
         o.effectColor = new Color(1f, 0.76f, 0.29f, 0.95f); o.effectDistance = new Vector2(2f, -2f);

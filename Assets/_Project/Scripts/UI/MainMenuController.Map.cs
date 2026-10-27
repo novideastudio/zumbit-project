@@ -73,6 +73,7 @@ public partial class MainMenuController
 
         // ---- painel da missao (rolavel) + faixa da equipe ----
         BuildHubMissionPanelMobile(s);
+        AddMissionFormationButton();
         BuildHubBottomMobile(s, save, surv, prog);
         var hiddenSquad = s.Find("HubSquadPanelM");
         if (hiddenSquad != null) hiddenSquad.gameObject.SetActive(false);

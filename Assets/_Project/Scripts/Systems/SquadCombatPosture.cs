@@ -6,7 +6,7 @@ using UnityEngine.UI;
 // Opt-in wave-only squad movement. Does not change Hero shooting or any spawner.
 public sealed class SquadCombatPosture : MonoBehaviour
 {
-    public float maxAdvance = 2.5f;
+    // Advance is determined by weapon range, not a fixed displacement.
     public float advanceSpeed = 1.0f;
     public float retreatSpeed = 1.5f;
     public float contactSafety = 2.2f;
@@ -92,7 +92,7 @@ public sealed class SquadCombatPosture : MonoBehaviour
         {
             if(a.member.hero == null || !a.member.Alive) { if(a.motion) a.motion.SetMoving(false);continue; }
             Transform t=a.member.hero.transform;
-            float goal=Mathf.Clamp(a.goal,a.homeX,a.homeX+maxAdvance);
+            float goal=Mathf.Max(a.homeX,a.goal);
             if(!float.IsPositiveInfinity(aheadX)) goal=Mathf.Min(goal,aheadX-formationSpacing);
             // Never move behind the actor's original home position.
             goal=Mathf.Max(a.homeX,goal);
@@ -145,7 +145,7 @@ public sealed class SquadCombatPosture : MonoBehaviour
             float desired=nearest.transform.position.x-Mathf.Max(0.5f,horizontal-rangeMargin);
             // While in reach, hold until safety retreat: no oscillation along weapon boundary.
             if(best<=Mathf.Max(0.5f,horizontal-rangeMargin)) desired=h.transform.position.x;
-            a.goal=Mathf.Clamp(desired,a.homeX,a.homeX+maxAdvance);
+            a.goal=Mathf.Max(a.homeX,desired);
         }
     }
     void OnDestroy() { if(postureCanvas) Destroy(postureCanvas.gameObject); }
