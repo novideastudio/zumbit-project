@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f644dc52052d23459563ba134106422, type: 3}
+  m_Name: UITheme
+  m_EditorClassIdentifier: Assembly-CSharp::UITheme
+  useEditorUI: 1
+  polishPrefabButtons: 0
+  font: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  displayFont: {fileID: 0}
+  minFontSize: 14
+  fontScale: 1
+  titleScale: 1
+  outlineWidth: 0
+  outlineColor: {r: 0, g: 0, b: 0, a: 1}
+  backgroundColor: {r: 0.051, g: 0.067, b: 0.082, a: 1}
+  panelColor: {r: 0.106, g: 0.133, b: 0.169, a: 0.96}
+  accentColor: {r: 0.847, g: 0.141, b: 0.169, a: 1}
+  goldColor: {r: 1, g: 0.761, b: 0.294, a: 1}
+  grayColor: {r: 0.604, g: 0.651, b: 0.698, a: 1}
+  buttonColor: {r: 0.149, g: 0.188, b: 0.235, a: 1}
+  cyanColor: {r: 0.247, g: 0.784, b: 0.91, a: 1}
+  menuBackground: {fileID: 1532214447445832496, guid: 4613369bf11b0604993ec5807dba0665, type: 3}
+  panelSprite: {fileID: 0}
+  panelTint: {r: 1, g: 1, b: 1, a: 1}
+  buttonSprite: {fileID: 0}
+  buttonTint: {r: 1, g: 1, b: 1, a: 1}

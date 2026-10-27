@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3842beae1875db047ad4fc569534be4c, type: 3}
+  m_Name: sniper
+  m_EditorClassIdentifier: Assembly-CSharp::SurvivorAsset
+  id: sniper
+  order: 1
+  displayName: Sniper
+  role: Dano e alcance
+  description: "Especialista em elimina\xE7\xF5es \xE0 longa dist\xE2ncia. Com a SCAR-20, cada tiro \xE9 devastador e alcan\xE7a muito longe, mas a cad\xEAncia \xE9 baixa."
+  utilityName: "Tiro de precis\xE3o"
+  utilityDesc: "25% de chance de acerto cr\xEDtico (dano x2,5) e mira mais precisa."
+  utility: 1
+  color: {r: 0.75, g: 0.3, b: 0.3, a: 1}
+  portrait: {fileID: 21300000, guid: 4723e695b49a54d40bbd8a7dc7eb736c, type: 3}
+  fullBody: {fileID: 21300000, guid: c838f432382e2cd418b56f695054e890, type: 3}
+  heroHeight: 2
+  muzzleUV: {x: 0.998, y: 0.724}
+  weaponId: scar20
+  healthMult: 0.8
+  damageMult: 1
+  fireRateMult: 1
+  rangeMult: 1
+  accuracyBonus: 0.15
+  critChance: 0.25
+  critMult: 2.5
+  xpMult: 1
+  goldMult: 1
+  dropMult: 1

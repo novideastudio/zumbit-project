@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38c1dbd9ad7117d439260a63af6e8bbb, type: 3}
+  m_Name: common_3
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  displayName: Trabalhador
+  sprite: {fileID: 21300000, guid: 0ed4b55b707cfdb4eae8ea38ecff6917, type: 3}
+  tier: 0
+  theme: centro
+  sizeMult: 1
+  maxHealth: 30
+  moveSpeed: 1.2
+  damage: 5
+  attackInterval: 1
+  xp: 25
+  gold: 2
+  dropChance: 0.2

@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3842beae1875db047ad4fc569534be4c, type: 3}
+  m_Name: medic
+  m_EditorClassIdentifier: Assembly-CSharp::SurvivorAsset
+  id: medic
+  order: 2
+  displayName: Medic
+  role: "Sustenta\xE7\xE3o"
+  description: "Mant\xE9m a equipe viva. Resistente e sempre se curando. A MP5-SD dispara muito r\xE1pido, com dano baixo por tiro."
+  utilityName: Primeiros socorros
+  utilityDesc: "Regenera 1,5% da vida m\xE1xima por segundo (a dele e a do parceiro no modo dupla)."
+  utility: 2
+  color: {r: 0.3, g: 0.8, b: 0.45, a: 1}
+  portrait: {fileID: 21300000, guid: b0a21ec4e1a1b9c46a6b4c4ba27a648c, type: 3}
+  fullBody: {fileID: 21300000, guid: eb9dd9254e12b2c4f98555ca0b8a443b, type: 3}
+  heroHeight: 2
+  muzzleUV: {x: 0.991, y: 0.754}
+  weaponId: mp5sd
+  healthMult: 1.1
+  damageMult: 1
+  fireRateMult: 1
+  rangeMult: 1
+  accuracyBonus: 0
+  critChance: 0
+  critMult: 2
+  xpMult: 1
+  goldMult: 1
+  dropMult: 1

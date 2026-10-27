@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38c1dbd9ad7117d439260a63af6e8bbb, type: 3}
+  m_Name: boss_1
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  displayName: Comandante Corrompido
+  sprite: {fileID: 21300000, guid: 34060a1a50e61424d8b52845ebc7ccb9, type: 3}
+  tier: 2
+  theme: delegacia
+  sizeMult: 1
+  maxHealth: 1200
+  moveSpeed: 0.8
+  damage: 22
+  attackInterval: 1.3
+  xp: 500
+  gold: 100
+  dropChance: 1
