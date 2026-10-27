@@ -304,9 +304,9 @@ public partial class MainMenuController
                 if (req == null) continue;
                 bool reqDone = save.HighestCompleted(req.id) >= (int)Difficulty.Normal;
                 bool locDone = save.HighestCompleted(loc.id) >= (int)Difficulty.Normal;
-                Color c = reqDone && locDone ? new Color(0.30f, 0.92f, 0.50f, 0.95f)
-                        : reqDone ? new Color(1f, 0.86f, 0.55f, 0.95f)
-                        : new Color(0.85f, 0.22f, 0.22f, 0.60f);
+                Color c = reqDone && locDone ? new Color(0.47f, 0.87f, 0.51f, 0.96f)
+                        : reqDone ? new Color(0.99f, 0.87f, 0.62f, 0.96f)
+                        : new Color(0.94f, 0.84f, 0.64f, 0.84f);
                 float bend = ((req.id.GetHashCode() ^ loc.id.GetHashCode()) & 1) == 0 ? 0.08f : -0.08f;
                 path.Add(new Vector2(req.mapX, req.mapY), new Vector2(loc.mapX, loc.mapY), c, bend);
             }

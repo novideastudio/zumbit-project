@@ -14,6 +14,7 @@ public partial class MainMenuController : MonoBehaviour
 
     Canvas canvas;
     RectTransform root;
+    int responsiveCanvasMode = -1;
     readonly Dictionary<string, RectTransform> screens = new Dictionary<string, RectTransform>();
 
     Button continueBtn;
@@ -52,6 +53,7 @@ public partial class MainMenuController : MonoBehaviour
 
         canvas = UIFactory.MakeCanvas("MenuCanvas", 0);
         root = (RectTransform)canvas.transform;
+        RefreshResponsiveCanvasScale(true);
         var bg = UIFactory.Img(root, UIFactory.Dark, "Background");
         // Ignore the legacy composite menu image (fundo-menu.png), which has a baked-in
         // survivor. Use the clean gameplay background instead so the main menu can show
@@ -109,6 +111,26 @@ public partial class MainMenuController : MonoBehaviour
             if (ZombitCloud.State == CloudState.NeedsNick) OpenAccountNick("main", true);
             else ShowLogin();
         }
+    }
+
+    // Recalibra a escala quando a janela Web/PC muda de tamanho ou quando o jogo abre no celular.
+    // O modo compacto usa uma resolucao de referencia menor para evitar textos e botoes minúsculos.
+    void Update() => RefreshResponsiveCanvasScale(false);
+
+    void RefreshResponsiveCanvasScale(bool force)
+    {
+        if (canvas == null) return;
+        var scaler = canvas.GetComponent<CanvasScaler>();
+        if (scaler == null) return;
+        bool compact = Screen.width < 1100 || Screen.height < 650;
+        int mode = compact ? 1 : 0;
+        if (!force && mode == responsiveCanvasMode) return;
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        scaler.matchWidthOrHeight = 0.5f;
+        scaler.referenceResolution = compact ? new Vector2(1280f, 720f) : new Vector2(1920f, 1080f);
+        responsiveCanvasMode = mode;
+        Canvas.ForceUpdateCanvases();
     }
 
     // ---------- infra ----------

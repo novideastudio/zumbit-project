@@ -16,6 +16,9 @@ public static class UILayoutPrefabApplier
 
     public static bool HasLayout(string key)
     {
+        // O mapa foi reformulado no runtime com cartoes ilustrados e âncoras responsivas.
+        // O Layout_map.prefab antigo permanece no projeto como referencia, mas nao controla essa tela.
+        if (key == "map") return false;
         return !SuppressApply && !string.IsNullOrEmpty(key) && UITheme.Current.useEditorUI &&
                Resources.Load<GameObject>(ResourcesFolder + key) != null;
     }

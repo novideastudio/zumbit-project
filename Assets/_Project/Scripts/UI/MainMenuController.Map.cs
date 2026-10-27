@@ -32,24 +32,25 @@ public partial class MainMenuController
         mapBackdrop.raycastTarget = false;
         mapBackdrop.transform.SetAsFirstSibling();
 
-        // ---- sem cabecalho: perfil, menu, ouro e sucata ficam na barra lateral esquerda ----
-        BuildHubSidebar(s, save, surv, prog);
-        BuildHubWallet(s, save);
+        // ---- layout mobile: barra superior (perfil, ouro, sucata, capitulo) + menu estreito ----
+        BuildHubSidebarMobile(s);
+        BuildHubTopBar(s, save, surv, prog);
+        BuildHubChapterSelector(s, save);
 
         // ---- mapa ----
         var mapArea = UIKit.Frame(s, "MapArea", new Color(0.018f, 0.026f, 0.031f, 1f), UIKit.Col.Border, 2f);
-        UIFactory.Stretch(mapArea, 0.105f, 0.215f, 0.705f, 0.985f);
+        UIFactory.Stretch(mapArea, 0.09f, 0.225f, 0.70f, 0.885f);
         var mapInner = UIFactory.Node("MapInner", mapArea);
         UIFactory.Inset(UIFactory.Stretch(mapInner), 2f, 2f);
         mapInner.gameObject.AddComponent<RectMask2D>();
 
         var mapArt = UIFactory.Img(mapInner, Color.white, "CityMapArt");
-        mapArt.sprite = ArtLoader.Get("Art/Map/city_map");
+        mapArt.sprite = ArtLoader.Get("Art/Map/campaign_map");
         mapArt.preserveAspect = false;
         UIFactory.Stretch(mapArt.rectTransform);
         mapArt.raycastTarget = false;
-        mapArt.color = new Color(0.90f, 0.93f, 0.94f, 1f);
-        var mapShade = UIFactory.Img(mapInner, new Color(0.008f, 0.016f, 0.022f, 0.14f), "CityMapShade");
+        mapArt.color = Color.white;
+        var mapShade = UIFactory.Img(mapInner, new Color(0.008f, 0.016f, 0.022f, 0.035f), "CityMapShade");
         UIFactory.Stretch(mapShade.rectTransform);
         mapShade.raycastTarget = false;
 
@@ -68,11 +69,11 @@ public partial class MainMenuController
         }
         Debug.Log($"Zombit: marcadores do mapa criados: {markerCount}/{GameDatabase.Locations.Count}.");
 
-        BuildHubRegionHeader(mapInner, save);
+        // (cabecalho da regiao sobre o mapa removido: agora vive no seletor de capitulo do topo)
 
-        // ---- painel da missao + barra inferior ----
-        BuildHubMissionPanel(s);
-        BuildHubBottom(s, save, surv, prog);
+        // ---- painel da missao (rolavel) + faixa da equipe ----
+        BuildHubMissionPanelMobile(s);
+        BuildHubBottomMobile(s, save, surv, prog);
 
         LocationDef start = selectedLoc;
         if (start == null)
@@ -80,7 +81,9 @@ public partial class MainMenuController
                 if (GameDatabase.IsUnlocked(l, save) && save.HighestCompleted(l.id) < (int)Difficulty.Normal) { start = l; break; }
         if (start == null) start = GameDatabase.Locations[0];
 
-        UILayoutPrefabApplier.Apply(s, "map");
+        // Esta tela possui layout responsivo proprio; nao aplicar o antigo Layout_map.prefab,
+        // que sobrescreve âncoras e dimensoes do mapa/cartoes redesenhados. As outras telas
+        // continuam utilizando os prefabs editaveis normalmente.
         Show("map");
         SelectLocation(start);
 
@@ -301,26 +304,24 @@ public partial class MainMenuController
         if (parent == null || loc == null || save == null) return;
 
         bool unlocked = GameDatabase.IsUnlocked(loc, save);
-        bool done = save.HighestCompleted(loc.id) >= (int)Difficulty.Normal;   // progressao principal = Normal
-        Color fill = !unlocked ? new Color(0.035f, 0.045f, 0.055f, 0.93f) :
-            done ? new Color(0.035f, 0.12f, 0.07f, 0.93f) : new Color(0.10f, 0.055f, 0.035f, 0.93f);
-        Color border = !unlocked ? new Color(0.25f, 0.32f, 0.35f, 0.95f) :
-            done ? new Color(0.25f, 0.82f, 0.45f, 1f) : new Color(0.96f, 0.50f, 0.12f, 1f);
+        bool done = save.HighestCompleted(loc.id) >= (int)Difficulty.Normal;
+        Color fill = !unlocked ? new Color(0.035f, 0.043f, 0.046f, 0.98f)
+            : done ? new Color(0.035f, 0.10f, 0.065f, 0.98f)
+            : new Color(0.035f, 0.038f, 0.035f, 0.98f);
+        Color border = !unlocked ? new Color(0.34f, 0.37f, 0.36f, 0.98f)
+            : done ? new Color(0.36f, 0.78f, 0.43f, 1f)
+            : new Color(0.88f, 0.48f, 0.12f, 1f);
         var location = loc;
 
-        // Marcador vindo do prefab Node_Location (editavel na Unity). Sem prefab -> segue o codigo abaixo.
-        if (BuildNodeFromPrefab(parent, loc, index, save, unlocked, done, fill, border)) return;
-
-        // IMPORTANT: mapX/mapY sao coordenadas normalizadas dentro do MapMarkerLayer. Nao use
-        // UIFactory.Place aqui: ele tambem muda o pivot para a ancora e desloca o marcador para a borda.
+        // Cartao ilustrado: imagem da regiao em cima, numero no canto, nome/estrelas no rodape.
+        // Os sprites de Art/Map/Locations podem ser trocados sem editar o codigo.
         var button = UIFactory.Btn(parent, string.Empty, 10f, () => SelectLocation(location), fill, "Node_" + loc.id);
         var rt = (RectTransform)button.transform;
         Vector2 anchor = new Vector2(Mathf.Clamp01(loc.mapX), Mathf.Clamp01(loc.mapY));
-        rt.anchorMin = anchor;
-        rt.anchorMax = anchor;
-        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchorMin = anchor; rt.anchorMax = anchor; rt.pivot = new Vector2(0.5f, 0.5f);
         rt.anchoredPosition = Vector2.zero;
-        rt.sizeDelta = new Vector2(208f, 62f);
+        bool compactLayout = Screen.width < 1100 || Screen.height < 650;
+        rt.sizeDelta = compactLayout ? new Vector2(148f, 114f) : new Vector2(190f, 154f);
         rt.localRotation = Quaternion.identity;
         rt.localScale = Vector3.one;
         button.gameObject.SetActive(true);
@@ -330,7 +331,6 @@ public partial class MainMenuController
         var background = button.GetComponent<Image>();
         if (background)
         {
-            // A cor vive so no ColorBlock; o Image fica branco (senao as duas se multiplicam).
             background.sprite = UIKit.Chamfer;
             background.type = Image.Type.Sliced;
             background.color = Color.white;
@@ -339,86 +339,94 @@ public partial class MainMenuController
         }
         ColorBlock colors = button.colors;
         colors.normalColor = fill;
-        colors.highlightedColor = Color.Lerp(fill, UIKit.Col.Gold, 0.18f);
+        colors.highlightedColor = Color.Lerp(fill, UIKit.Col.Gold, 0.24f);
         colors.pressedColor = Color.Lerp(fill, Color.black, 0.25f);
         colors.selectedColor = colors.highlightedColor;
-        colors.disabledColor = new Color(0.12f, 0.13f, 0.14f, 0.95f);
+        colors.disabledColor = new Color(0.12f, 0.13f, 0.14f, 0.98f);
         colors.fadeDuration = 0.08f;
         button.colors = colors;
 
-        var emptyLabel = button.GetComponentInChildren<TMP_Text>(true);
-        if (emptyLabel) { emptyLabel.text = string.Empty; emptyLabel.raycastTarget = false; }
+        // Foto ilustrativa da regiao (existem imagens para todos os locais no projeto).
+        var art = UIFactory.Img(button.transform, Color.white, "LocationArt");
+        art.sprite = ArtLoader.Get("Art/Map/Locations/" + loc.id);
+        art.preserveAspect = false;
+        UIFactory.Stretch(art.rectTransform, 0.025f, 0.315f, 0.975f, 0.975f);
+        art.raycastTarget = false;
+        if (!unlocked) art.color = new Color(0.63f, 0.66f, 0.61f, 1f);
 
-        // Numero da missao
-        var numBox = UIFactory.Img(button.transform, new Color(0f, 0f, 0f, 0.55f), "NumBox");
-        UIFactory.Place(numBox.rectTransform, new Vector2(0f, 0.5f), new Vector2(7f, 0f), new Vector2(38f, 46f));
-        numBox.raycastTarget = false;
-        var num = UIFactory.Txt(numBox.transform, (index + 1).ToString("00"), 18, TextAlignmentOptions.Center,
+        // Sombra sutil sobre a imagem melhora a legibilidade do selo numerado.
+        var artShade = UIFactory.Img(button.transform, new Color(0.012f, 0.018f, 0.016f, unlocked ? 0.10f : 0.30f), "ArtShade");
+        UIFactory.Stretch(artShade.rectTransform, 0.025f, 0.315f, 0.975f, 0.975f);
+        artShade.raycastTarget = false;
+
+        var footer = UIFactory.Img(button.transform, new Color(0.018f, 0.024f, 0.022f, 0.98f), "Footer");
+        UIFactory.Stretch(footer.rectTransform, 0.02f, 0.025f, 0.98f, 0.365f);
+        footer.raycastTarget = false;
+        var footerLine = UIFactory.Img(button.transform, unlocked ? border : new Color(0.30f, 0.34f, 0.32f, 1f), "FooterLine");
+        UIFactory.Stretch(footerLine.rectTransform, 0.025f, 0.355f, 0.975f, 0.365f);
+        footerLine.raycastTarget = false;
+
+        var numPlate = UIKit.Frame(button.transform, "NumBox", new Color(0.055f, 0.060f, 0.052f, 0.98f),
+            unlocked ? UIKit.Col.Gold : new Color(0.48f, 0.51f, 0.48f), 1.5f);
+        float numSize = compactLayout ? 30f : 38f;
+        UIFactory.Place(numPlate, new Vector2(0f, 1f), new Vector2(6f, -6f), new Vector2(numSize, numSize * 0.88f));
+        // UIKit.Frame usa Images nos filhos Border/Fill; a raiz nao possui Image.
+        // Os filhos ja sao criados com raycastTarget=false em UIKit.Frame.
+        var num = UIFactory.Txt(numPlate, (index + 1).ToString("00"), compactLayout ? 16f : 19f, TextAlignmentOptions.Center,
             unlocked ? UIKit.Col.Gold : UIKit.Col.TextDim, "Num");
         UIFactory.Stretch(num.rectTransform);
         num.fontStyle = FontStyles.Bold;
+        num.raycastTarget = false;
 
-        // Nome
-        var nameText = UIFactory.Txt(button.transform, loc.name.ToUpperInvariant(), 14, TextAlignmentOptions.MidlineLeft,
-            unlocked ? Color.white : new Color(0.72f, 0.77f, 0.80f), "LocationName");
-        UIFactory.Stretch(nameText.rectTransform, 0f, 0.5f, 1f, 1f);
-        nameText.rectTransform.offsetMin = new Vector2(53f, 0f);
-        nameText.rectTransform.offsetMax = new Vector2(-34f, -5f);
+        var nameText = UIFactory.Txt(button.transform, loc.name.ToUpperInvariant(), 12.5f,
+            TextAlignmentOptions.Center, unlocked ? Color.white : new Color(0.69f, 0.73f, 0.70f), "LocationName");
+        UIFactory.Stretch(nameText.rectTransform, 0.045f, 0.165f, 0.955f, 0.345f);
         nameText.fontStyle = FontStyles.Bold;
+        nameText.characterSpacing = 0.4f;
         nameText.textWrappingMode = TextWrappingModes.NoWrap;
         nameText.overflowMode = TextOverflowModes.Truncate;
+        nameText.enableAutoSizing = true; nameText.fontSizeMin = compactLayout ? 8f : 9f; nameText.fontSizeMax = compactLayout ? 11f : 12.5f;
         nameText.raycastTarget = false;
 
-        if (unlocked || editorUiBaking)   // no bake, todas as pecas opcionais sao criadas (o runtime liga/desliga)
+        // As quatro estrelas acompanham a progressao real de dificuldade.
+        for (int i = 0; i < 4; i++)
         {
-            // Estrelas = niveis de dificuldade concluidos (Facil, Normal, Dificil, Pesadelo).
-            for (int i = 0; i < 4; i++)
-            {
-                bool got = save.IsCompleted(loc.id, i + 1);
-                var star = UIFactory.Img(button.transform, got ? UIKit.Col.Gold : new Color(0.28f, 0.32f, 0.36f, 1f), "Star_" + i);
-                star.sprite = UIKit.Star;
-                UIFactory.Place(star.rectTransform, new Vector2(0f, 0f), new Vector2(54f + i * 20f, 9f), new Vector2(17f, 17f));
-                star.rectTransform.pivot = new Vector2(0f, 0f);
-                star.raycastTarget = false;
-            }
-        }
-        if (!unlocked || editorUiBaking)
-        {
-            var req = UIFactory.Txt(button.transform, "NÍVEL " + loc.recommendedLevel, 13, TextAlignmentOptions.MidlineLeft,
-                new Color(1f, 0.36f, 0.34f), "LockLevel");
-            UIFactory.Stretch(req.rectTransform, 0f, 0f, 1f, 0.5f);
-            req.rectTransform.offsetMin = new Vector2(53f, 5f);
-            req.rectTransform.offsetMax = new Vector2(-6f, 0f);
-            req.fontStyle = FontStyles.Bold;
-            req.textWrappingMode = TextWrappingModes.NoWrap;
-            req.raycastTarget = false;
+            bool got = save.IsCompleted(loc.id, i + 1);
+            var star = UIFactory.Img(button.transform, got ? UIKit.Col.Gold : new Color(0.28f, 0.32f, 0.30f, 1f), "Star_" + i);
+            star.sprite = UIKit.Star;
+            float starSize = compactLayout ? 13f : 16f;
+            UIFactory.Place(star.rectTransform, new Vector2(0f, 0f), new Vector2(10f + i * (compactLayout ? 18f : 21f), 6f), new Vector2(starSize, starSize));
+            star.raycastTarget = false;
         }
 
-        // Selo de status (concluido / bloqueado)
-        if (done || editorUiBaking)
+        if (!unlocked)
         {
-            var ok = UIFactory.Img(button.transform, new Color(0.25f, 0.82f, 0.45f, 1f), "DoneBadge");
-            UIKit.ApplyCircle(ok, new Color(0.25f, 0.82f, 0.45f, 1f));
-            UIFactory.Place(ok.rectTransform, new Vector2(1f, 0.5f), new Vector2(-8f, 0f), new Vector2(24f, 24f));
-            ok.raycastTarget = false;
-            var okTxt = UIFactory.Txt(ok.transform, "OK", 10, TextAlignmentOptions.Center, new Color(0.02f, 0.10f, 0.05f), "DoneText");
-            UIFactory.Stretch(okTxt.rectTransform);
-            okTxt.fontStyle = FontStyles.Bold;
-            okTxt.raycastTarget = false;
+            var level = UIFactory.Txt(button.transform, "NV. " + loc.recommendedLevel, 10f,
+                TextAlignmentOptions.MidlineRight, new Color(1f, 0.37f, 0.32f, 1f), "LockLevel");
+            UIFactory.Place(level.rectTransform, new Vector2(1f, 0f), new Vector2(-7f, 8f), new Vector2(compactLayout ? 42f : 50f, 17f));
+            level.fontStyle = FontStyles.Bold;
+            level.enableAutoSizing = true; level.fontSizeMin = 8f; level.fontSizeMax = 10f;
+            level.textWrappingMode = TextWrappingModes.NoWrap;
+            level.raycastTarget = false;
+            BuildHubLock(button.transform, new Vector2(1f, 1f), new Vector2(-8f, compactLayout ? -25f : -31f), compactLayout ? 14f : 17f);
         }
-        if ((!done && !unlocked) || editorUiBaking)
+        else if (done)
         {
-            BuildHubLock(button.transform, new Vector2(1f, 0.5f), new Vector2(-9f, 0f), 24f);
+            var doneBadge = UIKit.Frame(button.transform, "DoneBadge", new Color(0.08f, 0.30f, 0.18f, 0.96f), UIKit.Col.Success, 1f);
+            UIFactory.Place(doneBadge, new Vector2(1f, 1f), new Vector2(-6f, -6f), new Vector2(26f, 22f));
+            var doneText = UIFactory.Txt(doneBadge, "✓", 15f, TextAlignmentOptions.Center, Color.white, "DoneText");
+            UIFactory.Stretch(doneText.rectTransform);
+            doneText.raycastTarget = false;
         }
 
-        // Pino (so no local selecionado)
-        var pin = UIFactory.Img(button.transform, new Color(0.96f, 0.42f, 0.10f, 1f), "SelectedPin");
-        UIKit.ApplyCircle(pin, new Color(0.96f, 0.42f, 0.10f, 1f));
-        UIFactory.Place(pin.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, 24f), new Vector2(20f, 20f));
+        // Marcador do local escolhido: pino laranja acima do cartão.
+        var pin = UIFactory.Img(button.transform, new Color(0.98f, 0.30f, 0.08f, 1f), "SelectedPin");
+        UIKit.ApplyCircle(pin, new Color(0.98f, 0.30f, 0.08f, 1f));
+        UIFactory.Place(pin.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, 6f), compactLayout ? new Vector2(17f, 17f) : new Vector2(22f, 22f));
         pin.raycastTarget = false;
-        var pinDot = UIFactory.Img(pin.transform, new Color(0.10f, 0.05f, 0.03f, 1f), "PinDot");
-        UIKit.ApplyCircle(pinDot, new Color(0.10f, 0.05f, 0.03f, 1f));
-        UIFactory.Place(pinDot.rectTransform, Mid, Vector2.zero, new Vector2(8f, 8f));
+        var pinDot = UIFactory.Img(pin.transform, new Color(0.18f, 0.05f, 0.02f, 1f), "PinDot");
+        UIKit.ApplyCircle(pinDot, new Color(0.18f, 0.05f, 0.02f, 1f));
+        UIFactory.Place(pinDot.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, compactLayout ? new Vector2(5f, 5f) : new Vector2(7f, 7f));
         pinDot.raycastTarget = false;
         pin.gameObject.SetActive(false);
         nodePins[loc.id] = pin.gameObject;
