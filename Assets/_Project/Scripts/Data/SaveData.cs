@@ -1,6 +1,14 @@
 using System;
 using System.Collections.Generic;
 
+/// <summary>Grau (1..6) de uma habilidade da arvore.</summary>
+[Serializable]
+public class SkillRankEntry
+{
+    public string id;
+    public int rank;
+}
+
 [Serializable]
 public class SurvivorProgress
 {
@@ -11,6 +19,23 @@ public class SurvivorProgress
     public int skillPoints;
     public List<string> unlockedSkills = new List<string>();
     public List<ItemInstance> equipped = new List<ItemInstance>();
+    // ---- versao 7: habilidades com graus e especializacao ----
+    public List<SkillRankEntry> skillRanks = new List<SkillRankEntry>();
+    public string specialization = "";
+    /// <summary>Quantas vezes os pontos ja foram redistribuidos (a primeira e gratis).</summary>
+    public int skillResets;
+
+    /// <summary>Total de graus comprados (habilidades antigas sem grau registrado contam 1).</summary>
+    public int SpentSkillRanks()
+    {
+        int n = 0;
+        var seen = new HashSet<string>();
+        if (skillRanks != null)
+            foreach (var r in skillRanks) if (r != null && !string.IsNullOrEmpty(r.id) && seen.Add(r.id)) n += Math.Max(0, r.rank);
+        if (unlockedSkills != null)
+            foreach (var id in unlockedSkills) if (!string.IsNullOrEmpty(id) && seen.Add(id)) n += 1;
+        return n;
+    }
 }
 
 /// <summary>Missao em andamento. Gravada ao iniciar e limpa ao terminar: se o jogo abrir com ela ainda ativa, o jogador fechou o jogo no meio (conta como morte).</summary>
@@ -39,7 +64,7 @@ public class LostItemRecord
 [Serializable]
 public class SaveData
 {
-    public int version = 6;
+    public int version = 7;
     public int slot = 1;
     public string selectedSurvivor = "assaulter";
     /// <summary>Segundo slot do esquadrao (modo dupla). Vazio = jogar solo. Campo novo: saves antigos ficam solo.</summary>
@@ -124,6 +149,20 @@ public class SaveData
                 p.skillPoints = Math.Max(0, Balance.SkillPointsTotal(p.level) - spent);
             }
             version = 6;
+        }
+
+        // v7: habilidades com 6 graus, mais pontos por nivel e nivel maximo 50.
+        // Pontos livres = (pontos que o nivel da agora) - (graus ja comprados), nunca negativo.
+        if (version < 7)
+        {
+            foreach (var p in progress)
+            {
+                if (p == null) continue;
+                if (p.skillRanks == null) p.skillRanks = new List<SkillRankEntry>();
+                if (p.specialization == null) p.specialization = "";
+                p.skillPoints = Math.Max(0, Balance.SkillPointsTotal(p.level) - p.SpentSkillRanks());
+            }
+            version = 7;
         }
         NormalizeSquad();
     }
@@ -232,6 +271,8 @@ public class SaveData
             if (p == null || p.id != id) continue;
             if (p.equipped == null) p.equipped = new List<ItemInstance>();
             if (p.unlockedSkills == null) p.unlockedSkills = new List<string>();
+            if (p.skillRanks == null) p.skillRanks = new List<SkillRankEntry>();
+            if (p.specialization == null) p.specialization = "";
             return p;
         }
         var n = new SurvivorProgress { id = id };

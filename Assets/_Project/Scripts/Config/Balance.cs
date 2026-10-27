@@ -8,14 +8,19 @@ using UnityEngine;
 public static class Balance
 {
     // ===================== XP e nivel =====================
-    public const int MaxLevel = 30;
+    public const int MaxLevel = 50;
 
     /// <summary>XP para subir do nivel L para L+1: 100 x L^2 (antes: 100 x L^1,35, sem teto).</summary>
-    public static int XpForLevel(int level) { level = Mathf.Max(1, level); return 100 * level * level; }
+    public static int XpForLevel(int level)
+    {
+        level = Mathf.Max(1, level);
+        // Ate o nivel 30: 100 x L^2. Depois cresce em linha reta (90.000 + 3.000 por nivel acima de 30), para o 50 nao virar um muro.
+        return level <= 30 ? 100 * level * level : 90000 + 3000 * (level - 30);
+    }
 
     // ===================== Pontos de habilidade =====================
     /// <summary>Pontos acumulados ao atingir um nivel: 1 a cada 3 niveis (10 no nivel 30). A arvore tem 9 nos.</summary>
-    public static int SkillPointsTotal(int level) => Mathf.Max(0, level) / 3;
+    public static int SkillPointsTotal(int level) => Mathf.Max(0, level - 1) + 2 * (Mathf.Max(0, level) / 10);   // 1 por nivel + 2 a cada 10 niveis (59 no nivel 50)
     public static int SkillPointsBetween(int fromLevel, int toLevel) => Mathf.Max(0, SkillPointsTotal(toLevel) - SkillPointsTotal(fromLevel));
     /// <summary>Nivel minimo para cada tier da arvore (antes: 1 / 3 / 5).</summary>
     public static int SkillTierLevel(int tier) => tier <= 1 ? 1 : tier == 2 ? 5 : 10;

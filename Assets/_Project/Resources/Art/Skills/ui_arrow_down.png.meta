@@ -144,10 +144,10 @@ TextureImporter:
       name: ui_arrow_down_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 256
-        height: 256
+        x: 111
+        y: 90
+        width: 290
+        height: 333
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}

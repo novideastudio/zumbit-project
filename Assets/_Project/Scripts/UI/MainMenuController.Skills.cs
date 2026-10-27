@@ -6,12 +6,11 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 // Arvore de habilidades no mapa (parte de MainMenuController).
-// Layout (referencia 1920x1080): 3 paineis de ramo + painel de detalhes + legenda.
-// Os icones ficam em Resources/Art/Skills (icon_*.png / ui_*.png). Se um PNG nao existir,
-// a tela continua funcionando (so aquele icone some). Para trocar a arte, basta substituir o PNG.
+// Layout (referencia 1920x1080): 3 paineis de ramo (6 habilidades cada) + painel de detalhes (especializacao, graus, evoluir) + legenda.
+// Os icones ficam em Resources/Art/Skills (icon_*.png / ui_*.png). Se um PNG nao existir, a tela continua funcionando.
 public partial class MainMenuController
 {
-    enum SkState { Unlocked, Available, NoPoints, Locked }
+    enum SkState { Maxed, Ranked, Available, NoPoints, Locked }
 
     const string SkArt = "Art/Skills/";
 
@@ -23,17 +22,18 @@ public partial class MainMenuController
     const float SkLeft = 24f;
     const float SkCardX = 16f;
     const float SkCardW = 398f;
-    const float SkCardH = 212f;
-    const float SkCardY0 = 116f;      // y do primeiro cartao dentro do painel do ramo
-    const float SkCardStep = 252f;    // distancia entre cartoes (212 de cartao + 40 de conector)
+    const float SkCardH = 112f;
+    const float SkCardY0 = 104f;      // y do primeiro cartao dentro do painel do ramo
+    const float SkCardStep = 122f;    // 6 cartoes cabem em 846 px
 
     static readonly Color SkPanelFill = new Color(0.025f, 0.040f, 0.052f, 0.96f);
-    static readonly Color SkDark = new Color(0.030f, 0.042f, 0.052f, 1f);
     static readonly Color SkGreen = new Color(0.30f, 0.90f, 0.52f, 1f);
     static readonly Color SkGreenText = new Color(0.45f, 0.95f, 0.62f, 1f);
     static readonly Color SkGoldCol = new Color(1f, 0.72f, 0.20f, 1f);
     static readonly Color SkDim = new Color(0.60f, 0.68f, 0.72f, 1f);
     static readonly Color SkLockedLine = new Color(0.20f, 0.27f, 0.31f, 1f);
+
+    bool skResetArmed;   // 1o clique em REDISTRIBUIR arma a confirmacao
 
     // ---------- habilidades no mapa ----------
     /// <summary>Sobrevivente das habilidades: o que esta sendo editado na Mochila (retratos) ou, sem ele, o principal.</summary>
@@ -50,6 +50,7 @@ public partial class MainMenuController
         if (save == null) { Show("main"); return; }
         var survivor = GameDatabase.GetSurvivor(SkillsSurvivorId(save));
         if (survivor == null) { ShowMap(); return; }
+        if (invSurvivorId != survivor.id) skResetArmed = false;
         invSurvivorId = survivor.id;   // Mochila e Habilidades editam o mesmo sobrevivente
         var progress = save.GetProgress(survivor.id);
         var nodes = SkillTreeSystem.GetNodes(survivor.id);
@@ -57,7 +58,7 @@ public partial class MainMenuController
         if (!string.IsNullOrEmpty(nodeId) && SkillTreeSystem.GetNode(survivor.id, nodeId) == null) nodeId = null;
         if (string.IsNullOrEmpty(nodeId) && nodes.Count > 0)
         {
-            // Sem selecao: abre na primeira habilidade que da para desbloquear (senao, na primeira).
+            // Sem selecao: abre na primeira habilidade que da para evoluir (senao, na primeira).
             nodeId = nodes[0].id;
             for (int i = 0; i < nodes.Count; i++)
                 if (SkillTreeSystem.CanUnlock(progress, nodes[i], out string _)) { nodeId = nodes[i].id; break; }
@@ -136,6 +137,7 @@ public partial class MainMenuController
             if (id == invSurvivorId) return;
             invSurvivorId = id;
             selectedSkillId = null;      // cada personagem tem arvore propria
+            skResetArmed = false;
             ShowMapSkills(null);
         }, UIKit.BtnStyle.Secondary, 12, "SkSurvivor_" + id);
         UIFactory.Elem(b.gameObject, width, 64f);
@@ -205,13 +207,13 @@ public partial class MainMenuController
 
         string branchName = branch == 0 ? "RAMO ALFA" : branch == 1 ? "RAMO BRAVO" : "RAMO CHARLIE";
         SkillTreeNode first = null;
-        int total = 0, unlockedCount = 0;
+        int ranksDone = 0, ranksMax = 0;
         for (int j = 0; j < nodes.Count; j++)
         {
             if (nodes[j].branchIndex != branch) continue;
             if (first == null) { first = nodes[j]; branchName = nodes[j].branchName.ToUpperInvariant(); }
-            total++;
-            if (SkillTreeSystem.IsUnlocked(progress, nodes[j].id)) unlockedCount++;
+            ranksMax += SkillTreeSystem.MaxRank;
+            ranksDone += SkillTreeSystem.GetRank(progress, nodes[j].id);
         }
 
         // Faixa do cabecalho do ramo.
@@ -235,33 +237,17 @@ public partial class MainMenuController
         var bt = MapText(panel, branchName, 26, TextAlignmentOptions.MidlineLeft, accent, 102, 22, 312, 34, "BranchTitle");
         bt.fontStyle = FontStyles.Bold;
         SkFit(bt, 16f);
-        MapText(panel, unlockedCount + " / " + total + " DESBLOQUEADAS", UIKit.Size.Caption,
-            TextAlignmentOptions.MidlineLeft, SkDim, 102, 58, 190, 22, "BranchProgress");
+        MapText(panel, "GRAUS  " + ranksDone + " / " + ranksMax, UIKit.Size.Caption,
+            TextAlignmentOptions.MidlineLeft, SkDim, 102, 58, 300, 22, "BranchProgress");
 
-        // Segmentos de progresso (um por habilidade do ramo).
-        for (int i = 0; i < total; i++)
-        {
-            bool done = i < unlockedCount;
-            var pip = UIFactory.Img(panel, done ? accent : new Color(0.20f, 0.26f, 0.30f, 1f), "ProgressPip_" + i);
-            UIFactory.Place(pip.rectTransform, new Vector2(0f, 1f), new Vector2(314f + i * 34f, -67f), new Vector2(28f, 7f));
-            pip.raycastTarget = false;
-        }
-
-        // Conectores entre cartoes (linha + seta).
-        for (int j = 0; j < nodes.Count; j++)
-        {
-            var n = nodes[j];
-            if (n.branchIndex != branch || n.tier < 2) continue;
-            float yTop = SkCardY0 + (n.tier - 2) * SkCardStep + SkCardH;
-            float yBottom = SkCardY0 + (n.tier - 1) * SkCardStep;
-            bool lit = SkillTreeSystem.IsUnlocked(progress, n.prerequisiteId);
-            Color lc = lit ? new Color(accent.r, accent.g, accent.b, 0.95f) : new Color(accent.r, accent.g, accent.b, 0.35f);
-            var line = UIFactory.Img(panel, lc, "TierConnector_" + n.tier);
-            UIFactory.Place(line.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -yTop), new Vector2(4f, yBottom - yTop - 14f));
-            line.raycastTarget = false;
-            SkImage(panel, "ui_arrow_down", lc, "TierArrow_" + n.tier,
-                new Vector2(0.5f, 1f), new Vector2(0f, -(yBottom - 24f)), new Vector2(24f, 24f));
-        }
+        // Barra de progresso do ramo (graus comprados / total).
+        var track = UIFactory.Img(panel, new Color(0.20f, 0.26f, 0.30f, 1f), "BranchBarTrack");
+        UIFactory.Place(track.rectTransform, new Vector2(0f, 1f), new Vector2(102f, -84f), new Vector2(304f, 7f));
+        track.raycastTarget = false;
+        float ratio = ranksMax > 0 ? (float)ranksDone / ranksMax : 0f;
+        var fillBar = UIFactory.Img(panel, accent, "BranchBarFill");
+        UIFactory.Place(fillBar.rectTransform, new Vector2(0f, 1f), new Vector2(102f, -84f), new Vector2(Mathf.Max(1f, 304f * ratio), 7f));
+        fillBar.raycastTarget = false;
 
         for (int j = 0; j < nodes.Count; j++)
         {
@@ -271,48 +257,55 @@ public partial class MainMenuController
     }
 
     // ---------- cartao de habilidade ----------
+    SkState SkStateOf(SkillTreeNode node, SurvivorProgress progress, out int rank, out bool prereqMet, out bool levelMet)
+    {
+        rank = SkillTreeSystem.GetRank(progress, node.id);
+        prereqMet = string.IsNullOrEmpty(node.prerequisiteId) || SkillTreeSystem.IsUnlocked(progress, node.prerequisiteId);
+        levelMet = rank >= SkillTreeSystem.MaxRank || progress.level >= SkillTreeSystem.RequiredLevelFor(node, rank + 1);
+        if (rank >= SkillTreeSystem.MaxRank) return SkState.Maxed;
+        if (SkillTreeSystem.CanUnlock(progress, node, out string _)) return SkState.Available;
+        if (prereqMet && levelMet) return SkState.NoPoints;
+        return rank > 0 ? SkState.Ranked : SkState.Locked;
+    }
+
     void SkBuildCard(RectTransform panel, SkillTreeNode node, Color accent, SurvivorDef survivor, SurvivorProgress progress)
     {
-        bool unlocked = SkillTreeSystem.IsUnlocked(progress, node.id);
-        bool canUnlock = SkillTreeSystem.CanUnlock(progress, node, out string _);
-        bool prereqMet = string.IsNullOrEmpty(node.prerequisiteId) || SkillTreeSystem.IsUnlocked(progress, node.prerequisiteId);
-        bool levelMet = progress.level >= node.requiredLevel;
-        SkState state = unlocked ? SkState.Unlocked : canUnlock ? SkState.Available :
-            (prereqMet && levelMet) ? SkState.NoPoints : SkState.Locked;
+        var state = SkStateOf(node, progress, out int rank, out bool prereqMet, out bool levelMet);
         bool selected = node.id == selectedSkillId;
         bool locked = state == SkState.Locked;
+        Color gold = new Color(1f, 0.78f, 0.28f, 1f);
 
         Color fill, border;
         switch (state)
         {
-            case SkState.Unlocked:
-                fill = new Color(0.040f, 0.155f, 0.115f, 1f);
-                border = new Color(0.25f, 0.85f, 0.50f, 0.95f); break;
+            case SkState.Maxed:
+                fill = new Color(0.12f, 0.09f, 0.03f, 1f); border = gold; break;
+            case SkState.Ranked:
+                fill = new Color(0.040f, 0.155f, 0.115f, 1f); border = new Color(0.25f, 0.85f, 0.50f, 0.95f); break;
             case SkState.Available:
-                fill = Color.Lerp(new Color(0.045f, 0.058f, 0.068f, 1f), accent, 0.14f);
-                border = new Color(accent.r, accent.g, accent.b, 0.95f); break;
+                fill = Color.Lerp(new Color(0.045f, 0.058f, 0.068f, 1f), accent, 0.14f); border = new Color(accent.r, accent.g, accent.b, 0.95f); break;
             case SkState.NoPoints:
-                fill = Color.Lerp(new Color(0.045f, 0.058f, 0.068f, 1f), accent, 0.07f);
-                border = new Color(accent.r, accent.g, accent.b, 0.55f); break;
+                fill = Color.Lerp(new Color(0.045f, 0.058f, 0.068f, 1f), accent, 0.07f); border = new Color(accent.r, accent.g, accent.b, 0.55f); break;
             default:
-                fill = new Color(0.030f, 0.042f, 0.052f, 0.98f);
-                border = SkLockedLine; break;
+                fill = new Color(0.030f, 0.042f, 0.052f, 0.98f); border = SkLockedLine; break;
         }
+        // Ranked com grau mas sem poder evoluir agora continua verde; Available com grau tambem.
+        if (rank > 0 && state == SkState.Available) { fill = Color.Lerp(new Color(0.040f, 0.155f, 0.115f, 1f), accent, 0.12f); }
+
         float cardY = SkCardY0 + (node.tier - 1) * SkCardStep;
         float bw = 2f;
         if (selected)
         {
-            border = Color.Lerp(accent, Color.white, 0.25f);
+            border = Color.Lerp(border, Color.white, 0.30f);
             fill = Color.Lerp(fill, accent, 0.10f);
             bw = 3.5f;
-            SkImage(panel, "ui_glow", new Color(accent.r, accent.g, accent.b, 0.80f), "SelectedGlow",
-                new Vector2(0f, 1f), new Vector2(0f, -(cardY - 16f)), new Vector2(SkBranchW, SkCardH + 32f), false);
+            SkImage(panel, "ui_glow", new Color(accent.r, accent.g, accent.b, 0.70f), "SelectedGlow",
+                new Vector2(0f, 1f), new Vector2(0f, -(cardY - 12f)), new Vector2(SkBranchW, SkCardH + 24f), false);
         }
 
         var card = UIKit.Frame(panel, "Skill_" + node.id, fill, border, bw);
         UIFactory.Place(card, new Vector2(0f, 1f), new Vector2(SkCardX, -cardY), new Vector2(SkCardW, SkCardH));
 
-        // Area clicavel (invisivel) + botao sem transicao de cor; UIButtonFx cuida do hover.
         var hit = card.gameObject.AddComponent<Image>();
         hit.color = new Color(0f, 0f, 0f, 0f);
         hit.raycastTarget = true;
@@ -320,87 +313,52 @@ public partial class MainMenuController
         btn.targetGraphic = hit;
         btn.transition = Selectable.Transition.None;
         string id = node.id;
-        btn.onClick.AddListener(() => { ZombitAudio.PlayUI(); ShowMapSkills(id); });
+        btn.onClick.AddListener(() => { ZombitAudio.PlayUI(); skResetArmed = false; ShowMapSkills(id); });
         card.gameObject.AddComponent<UIButtonFx>();
 
-        Color nameCol = unlocked ? SkGreenText : locked ? new Color(0.66f, 0.72f, 0.76f, 1f) : Color.white;
-        Color descCol = locked ? new Color(0.58f, 0.65f, 0.69f, 1f) : new Color(0.84f, 0.89f, 0.91f, 1f);
+        Color nameCol = state == SkState.Maxed ? gold : rank > 0 ? SkGreenText : locked ? new Color(0.66f, 0.72f, 0.76f, 1f) : Color.white;
 
-        // Moldura do icone.
+        // Icone.
         Color iconFill = locked ? new Color(0.035f, 0.048f, 0.058f, 1f) : Color.Lerp(new Color(0.035f, 0.048f, 0.058f, 1f), accent, 0.20f);
-        Color iconBorder = unlocked ? new Color(0.25f, 0.85f, 0.50f, 0.95f) : locked ? SkLockedLine : new Color(accent.r, accent.g, accent.b, 0.85f);
-        var iconFrame = UIKit.Frame(card, "IconFrame", iconFill, iconBorder, 2f);
-        UIFactory.Place(iconFrame, new Vector2(0f, 1f), new Vector2(16f, -18f), new Vector2(100f, 100f));
+        var iconFrame = UIKit.Frame(card, "IconFrame", iconFill, border, 2f);
+        UIFactory.Place(iconFrame, new Vector2(0f, 1f), new Vector2(12f, -16f), new Vector2(80f, 80f));
         Color iconTint = locked ? new Color(0.50f, 0.54f, 0.60f, 0.85f) : Color.white;
         SkImage(iconFrame, "icon_" + SkIconKey(survivor.id, node), iconTint, "SkillIcon",
-            new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(76f, 76f));
+            new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(60f, 60f));
 
-        // Selo de "desbloqueada" no canto do icone e estrela de "selecionada".
-        if (unlocked)
-        {
-            var seal = SkBadge(iconFrame, "SealUnlocked", SkGreen, new Color(0.03f, 0.18f, 0.11f, 1f), 30f, "ui_check", SkGreen, 16f);
-            UIFactory.Place(seal, new Vector2(1f, 0f), new Vector2(9f, -9f), new Vector2(30f, 30f));
-        }
-        if (selected)
-        {
-            var star = SkBadge(iconFrame, "SelectedStar", accent, new Color(0.04f, 0.05f, 0.06f, 1f), 28f, null, SkGoldCol, 14f);
-            var st = UIFactory.Img(star, SkGoldCol, "Star");
-            st.sprite = UIKit.Star; st.type = Image.Type.Simple; st.raycastTarget = false;
-            UIFactory.Place(st.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(16f, 16f));
-            UIFactory.Place(star, new Vector2(1f, 1f), new Vector2(9f, 9f), new Vector2(28f, 28f));
-        }
-
-        // Selo do tier (01/02/03) sobre o canto do icone.
-        var tier = UIKit.Frame(card, "TierBadge", new Color(0.03f, 0.04f, 0.05f, 1f), iconBorder, 1.5f);
-        UIFactory.Place(tier, new Vector2(0f, 1f), new Vector2(7f, -7f), new Vector2(40f, 26f));
-        var tt = UIFactory.Txt(tier, node.tier.ToString("00"), 15f, TextAlignmentOptions.Center,
-            unlocked ? SkGreenText : locked ? new Color(0.62f, 0.68f, 0.72f, 1f) : accent, "TierNumber");
-        tt.fontStyle = FontStyles.Bold;
-        UIFactory.Stretch(tt.rectTransform);
-
-        // Nome, ramo + nivel, descricao.
-        var nameText = MapText(card, node.displayName, 22, TextAlignmentOptions.MidlineLeft, nameCol, 130, 14, 254, 34, "SkillName");
+        // Nome + grau.
+        var nameText = MapText(card, node.displayName, 21, TextAlignmentOptions.MidlineLeft, nameCol, 104, 10, 232, 32, "SkillName");
         nameText.fontStyle = FontStyles.Bold;
-        SkFit(nameText, 15f);
+        SkFit(nameText, 14f);
 
-        string accHex = ColorUtility.ToHtmlStringRGB(locked ? new Color(accent.r * 0.75f, accent.g * 0.75f, accent.b * 0.75f) : accent);
-        var meta = MapText(card, "<color=#" + accHex + ">" + node.branchName.ToUpperInvariant() + "</color>  ·  REQUER NV. " + node.requiredLevel,
-            13, TextAlignmentOptions.MidlineLeft, SkDim, 130, 50, 254, 22, "SkillMeta");
-        meta.richText = true;
-        meta.characterSpacing = 0.3f;
-        SkFit(meta, 11f);
+        string rankLine;
+        Color rankCol;
+        if (rank > 0) { rankLine = SkillTreeSystem.RankName(rank).ToUpperInvariant() + "  " + rank + "/" + SkillTreeSystem.MaxRank; rankCol = state == SkState.Maxed ? gold : SkGreenText; }
+        else if (locked) { rankLine = (!prereqMet ? "REQUER A ANTERIOR" : "REQUER NV. " + SkillTreeSystem.RequiredLevelFor(node, 1)); rankCol = new Color(0.58f, 0.66f, 0.70f, 1f); }
+        else { rankLine = "SEM GRAU  ·  PRÓXIMO: " + SkillTreeSystem.RankName(1).ToUpperInvariant(); rankCol = SkGoldCol; }
+        var rl = MapText(card, rankLine, 14, TextAlignmentOptions.MidlineLeft, rankCol, 104, 44, 286, 22, "SkillRank");
+        rl.fontStyle = FontStyles.Bold;
+        SkFit(rl, 10f);
 
-        var desc = MapText(card, node.description, 17, TextAlignmentOptions.TopLeft, descCol, 130, 78, 254, 64, "SkillDescription");
-        desc.textWrappingMode = TextWrappingModes.Normal;
-
-        var div = UIFactory.Img(card, new Color(border.r, border.g, border.b, 0.55f), "FooterDivider");
-        UIFactory.Place(div.rectTransform, new Vector2(0f, 1f), new Vector2(16f, -152f), new Vector2(SkCardW - 32f, 1.5f));
-        div.raycastTarget = false;
-
-        // Rodape: icone + estado, centralizados.
-        var footer = UIFactory.Node("Footer", card);
-        UIFactory.Place(footer, new Vector2(0f, 1f), new Vector2(0f, -154f), new Vector2(SkCardW, 50f));
-        UIFactory.HLayout(footer, 8f, TextAnchor.MiddleCenter);
-        string footerText; Color footerCol; string footerGlyph; Color glyphCol;
-        switch (state)
+        // Seis segmentos: um por grau.
+        for (int i = 0; i < SkillTreeSystem.MaxRank; i++)
         {
-            case SkState.Unlocked:
-                footerText = "DESBLOQUEADA"; footerCol = SkGreenText; footerGlyph = "ui_check"; glyphCol = SkGreen; break;
-            case SkState.Available:
-                footerText = "DISPONÍVEL  ·  " + node.pointCost + (node.pointCost == 1 ? " PONTO" : " PONTOS");
-                footerCol = SkGoldCol; footerGlyph = "ui_points"; glyphCol = Color.white; break;
-            case SkState.NoPoints:
-                footerText = "SEM PONTOS  ·  PRECISA DE " + node.pointCost;
-                footerCol = new Color(0.86f, 0.62f, 0.30f, 1f); footerGlyph = "ui_points"; glyphCol = new Color(1f, 1f, 1f, 0.55f); break;
-            default:
-                footerText = "BLOQUEADA  ·  " + (!prereqMet ? "HABILIDADE ANTERIOR" : "REQUER NV. " + node.requiredLevel);
-                footerCol = new Color(0.58f, 0.66f, 0.70f, 1f); footerGlyph = "ui_lock"; glyphCol = new Color(0.58f, 0.66f, 0.70f, 1f); break;
+            bool got = i < rank;
+            Color pip = got ? (state == SkState.Maxed ? gold : accent) : new Color(0.20f, 0.26f, 0.30f, 1f);
+            var p = UIFactory.Img(card, pip, "RankPip_" + i);
+            UIFactory.Place(p.rectTransform, new Vector2(0f, 1f), new Vector2(104f + i * 46f, -78f), new Vector2(40f, 9f));
+            p.raycastTarget = false;
         }
-        SkGlyph(footer, footerGlyph, glyphCol, 22f, "FooterGlyph");
-        var ft = UIFactory.Txt(footer, footerText, UIKit.Size.Caption, TextAlignmentOptions.Center, footerCol, "SkillState");
-        ft.fontStyle = FontStyles.Bold;
-        ft.textWrappingMode = TextWrappingModes.NoWrap;
-        ft.characterSpacing = 0.5f;
+
+        // Selo no canto: cadeado / pontos / estrela de grau maximo.
+        string glyph = state == SkState.Maxed ? "ui_check" : locked ? "ui_lock" : state == SkState.Available ? "ui_points" : null;
+        if (glyph != null)
+        {
+            Color gc = state == SkState.Maxed ? gold : locked ? new Color(0.58f, 0.66f, 0.70f, 1f) : Color.white;
+            SkImage(card, glyph, gc, "StateGlyph", new Vector2(1f, 0f), new Vector2(-12f, 12f), new Vector2(26f, 26f));
+            var gi = card.Find("StateGlyph");
+            if (gi) { var rt = (RectTransform)gi; rt.pivot = new Vector2(1f, 0f); rt.anchoredPosition = new Vector2(-12f, 10f); }
+        }
     }
 
     // ---------- painel de detalhes ----------
@@ -411,10 +369,14 @@ public partial class MainMenuController
         float detailW = 1920f - SkLeft - detailX;
         SkillTreeNode node = SkillTreeSystem.GetNode(survivor.id, selectedSkillId);
         Color accent = node != null ? branchAccents[Mathf.Clamp(node.branchIndex, 0, 2)] : UIKit.Col.Border;
+        Color gold = new Color(1f, 0.78f, 0.28f, 1f);
 
         var panel = UIKit.Frame(s, "SelectedSkillPanel", new Color(0.028f, 0.042f, 0.052f, 0.97f),
             new Color(accent.r, accent.g, accent.b, 0.55f), 2f);
         UIFactory.Place(panel, new Vector2(0f, 1f), new Vector2(detailX, -SkTop), new Vector2(detailW, SkPanelH));
+        float inner = detailW - 32f;
+
+        SkBuildSpecialization(panel, survivor, progress, inner);
 
         if (node == null)
         {
@@ -422,121 +384,85 @@ public partial class MainMenuController
             return;
         }
 
-        bool unlocked = SkillTreeSystem.IsUnlocked(progress, node.id);
-        bool canUnlock = SkillTreeSystem.CanUnlock(progress, node, out string _);
-        bool prereqMet = string.IsNullOrEmpty(node.prerequisiteId) || SkillTreeSystem.IsUnlocked(progress, node.prerequisiteId);
-        bool levelMet = progress.level >= node.requiredLevel;
-        bool locked = !unlocked && !canUnlock && !(prereqMet && levelMet);
-        float inner = detailW - 32f;   // largura dos blocos internos (margem de 16)
+        var state = SkStateOf(node, progress, out int rank, out bool prereqMet, out bool levelMet);
+        bool canUnlock = state == SkState.Available;
+        bool maxed = state == SkState.Maxed;
 
-        // Titulo da secao.
-        var cap = MapText(panel, "DETALHES DA HABILIDADE", 14, TextAlignmentOptions.MidlineLeft, SkDim, 22, 14, 400, 26, "DetailCaption");
-        cap.fontStyle = FontStyles.Bold;
-        cap.characterSpacing = 2f;
-        var capLine = UIFactory.Img(panel, new Color(accent.r, accent.g, accent.b, 0.35f), "DetailCaptionLine");
-        UIFactory.Place(capLine.rectTransform, new Vector2(0f, 1f), new Vector2(16f, -46f), new Vector2(inner, 1.5f));
-        capLine.raycastTarget = false;
+        // Nome, ramo e grau atual.
+        var line = UIFactory.Img(panel, new Color(accent.r, accent.g, accent.b, 0.35f), "SkillTopLine");
+        UIFactory.Place(line.rectTransform, new Vector2(0f, 1f), new Vector2(16f, -190f), new Vector2(inner, 1.5f));
+        line.raycastTarget = false;
 
-        // Banner: brilho da cor do ramo + icone grande (recortado na moldura).
-        var banner = UIKit.Frame(panel, "SkillBanner", new Color(0.020f, 0.030f, 0.040f, 1f), new Color(accent.r, accent.g, accent.b, 0.60f), 2f);
-        UIFactory.Place(banner, new Vector2(0f, 1f), new Vector2(16f, -60f), new Vector2(inner, 214f));
-        var clip = UIFactory.Node("BannerClip", banner);
-        UIFactory.Stretch(clip);
-        UIFactory.Inset(clip, 2f, 2f);
-        clip.gameObject.AddComponent<RectMask2D>();
-        SkImage(clip, "ui_glow", new Color(accent.r, accent.g, accent.b, 0.55f), "BannerGlow",
-            new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(inner + 40f, 340f), false);
-        SkImage(clip, "ui_glow", new Color(1f, 1f, 1f, 0.10f), "BannerCore",
-            new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(260f, 200f), false);
-        SkImage(clip, "icon_" + SkIconKey(survivor.id, node), unlocked || !locked ? Color.white : new Color(0.55f, 0.58f, 0.64f, 0.9f),
-            "BannerIcon", new Vector2(0.5f, 0.5f), new Vector2(0f, 2f), new Vector2(168f, 168f));
+        var iconFrame = UIKit.Frame(panel, "DetailIconFrame", new Color(0.020f, 0.030f, 0.040f, 1f), new Color(accent.r, accent.g, accent.b, 0.70f), 2f);
+        UIFactory.Place(iconFrame, new Vector2(0f, 1f), new Vector2(16f, -202f), new Vector2(84f, 84f));
+        SkImage(iconFrame, "icon_" + SkIconKey(survivor.id, node), Color.white, "DetailIcon", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(64f, 64f));
 
-        // Nome.
-        var nm = MapText(panel, node.displayName, 34, TextAlignmentOptions.MidlineLeft, UIKit.Col.Gold, 22, 288, inner - 12f, 50, "SkillDetailName");
+        var nm = MapText(panel, node.displayName, 30, TextAlignmentOptions.MidlineLeft, UIKit.Col.Gold, 112, 202, inner - 100f, 40, "SkillDetailName");
         nm.fontStyle = FontStyles.Bold;
-        SkFit(nm, 22f);
-
-        // Chip do ramo + nivel.
+        SkFit(nm, 18f);
         string chipText = node.branchName.ToUpperInvariant();
-        float chipW = Mathf.Clamp(28f + chipText.Length * 10.5f, 110f, 330f);
-        var chip = UIKit.Frame(panel, "BranchChip", new Color(accent.r * 0.25f, accent.g * 0.25f, accent.b * 0.25f, 1f),
-            new Color(accent.r, accent.g, accent.b, 0.90f), 1.5f);
-        UIFactory.Place(chip, new Vector2(0f, 1f), new Vector2(22f, -346f), new Vector2(chipW, 34f));
-        var ct = UIFactory.Txt(chip, chipText, UIKit.Size.Caption, TextAlignmentOptions.Center, accent, "BranchChipText");
-        ct.fontStyle = FontStyles.Bold;
-        UIFactory.Stretch(ct.rectTransform);
-        SkFit(ct, 11f);
-        MapText(panel, "NÍVEL " + node.requiredLevel, 17, TextAlignmentOptions.MidlineLeft, SkDim, 22 + chipW + 14f, 346, 160, 34, "SkillDetailLevel").fontStyle = FontStyles.Bold;
+        MapText(panel, "<color=#" + ColorUtility.ToHtmlStringRGB(accent) + ">" + chipText + "</color>  ·  HABILIDADE " + node.tier + " DE 6", 14,
+            TextAlignmentOptions.MidlineLeft, SkDim, 112, 244, inner - 100f, 22, "SkillDetailMeta").richText = true;
+        string cur = rank > 0 ? SkillTreeSystem.RankName(rank).ToUpperInvariant() + "  (" + rank + "/" + SkillTreeSystem.MaxRank + ")" : "SEM GRAU";
+        var curT = MapText(panel, "GRAU ATUAL:  " + cur, 16, TextAlignmentOptions.MidlineLeft, maxed ? gold : rank > 0 ? SkGreenText : SkDim, 112, 264, inner - 100f, 24, "SkillCurrentRank");
+        curT.fontStyle = FontStyles.Bold;
+        SkFit(curT, 11f);
 
-        // Descricao.
-        var desc = MapText(panel, node.description, 23, TextAlignmentOptions.TopLeft, Color.white, 22, 396, inner - 12f, 96, "SkillDetailDescription");
-        desc.textWrappingMode = TextWrappingModes.Normal;
-
-        // Proxima habilidade do ramo.
-        SkillTreeNode next = null;
-        for (int j = 0; j < nodes.Count; j++)
-            if (nodes[j].prerequisiteId == node.id) { next = nodes[j]; break; }
-        var nextBox = UIKit.Frame(panel, "NextSkillBox", new Color(0.040f, 0.056f, 0.066f, 1f), new Color(0.20f, 0.27f, 0.31f, 1f), 1.5f);
-        UIFactory.Place(nextBox, new Vector2(0f, 1f), new Vector2(16f, -500f), new Vector2(inner, 100f));
-        SkImage(nextBox, "ui_chevrons", accent, "NextChevrons", new Vector2(0f, 1f), new Vector2(14f, -11f), new Vector2(22f, 22f));
-        var nl = MapText(nextBox, "PRÓXIMA NO RAMO", 14, TextAlignmentOptions.MidlineLeft, accent, 44, 8, 300, 26, "NextLabel");
-        nl.fontStyle = FontStyles.Bold;
-        nl.characterSpacing = 1.5f;
-        if (next != null)
+        // Tabela dos 6 graus.
+        float tableY = 304f;
+        var th = MapText(panel, "GRAUS", 13, TextAlignmentOptions.MidlineLeft, SkDim, 22, tableY, 200, 20, "RanksLabel");
+        th.fontStyle = FontStyles.Bold; th.characterSpacing = 2f;
+        MapText(panel, "BÔNUS TOTAL", 12, TextAlignmentOptions.MidlineLeft, SkDim, 218, tableY, 160, 20, "RanksBonusLabel").fontStyle = FontStyles.Bold;
+        MapText(panel, "NÍVEL", 12, TextAlignmentOptions.MidlineRight, SkDim, detailW - 16f - 100f, tableY, 100, 20, "RanksLevelLabel").fontStyle = FontStyles.Bold;
+        for (int r = 1; r <= SkillTreeSystem.MaxRank; r++)
         {
-            var nn = MapText(nextBox, next.displayName + "  ·  NV. " + next.requiredLevel, 19, TextAlignmentOptions.MidlineLeft, Color.white, 16, 36, inner - 32f, 28, "NextName");
-            nn.fontStyle = FontStyles.Bold;
-            SkFit(nn, 14f);
-            var nd = MapText(nextBox, next.description, 16, TextAlignmentOptions.MidlineLeft, SkDim, 16, 64, inner - 32f, 28, "NextDescription");
-            SkFit(nd, 12f);
+            float y = tableY + 24f + (r - 1) * 34f;
+            bool owned = r <= rank, next = r == rank + 1;
+            Color c = owned ? SkGreenText : next ? SkGoldCol : new Color(0.55f, 0.62f, 0.66f, 1f);
+            var row = UIFactory.Img(panel, owned ? new Color(0.05f, 0.16f, 0.11f, 0.9f) : next ? new Color(0.14f, 0.10f, 0.03f, 0.9f) : new Color(0.04f, 0.055f, 0.065f, 0.9f), "RankRow_" + r);
+            UIFactory.Place(row.rectTransform, new Vector2(0f, 1f), new Vector2(16f, -y), new Vector2(inner, 30f));
+            row.raycastTarget = false;
+            MapText(panel, (owned ? "✔ " : next ? "▶ " : "· ") + SkillTreeSystem.RankName(r).ToUpperInvariant(), 16, TextAlignmentOptions.MidlineLeft, c, 24, y, 190, 30, "RankName_" + r).fontStyle = FontStyles.Bold;
+            string total = SkillTreeSystem.LineFor(node.stat, node.bonuses.Get(node.stat) * r);
+            var tv = MapText(panel, total, 15, TextAlignmentOptions.MidlineLeft, c, 218, y, 230, 30, "RankBonus_" + r);
+            SkFit(tv, 10f);
+            MapText(panel, "NV. " + SkillTreeSystem.RequiredLevelFor(node, r), 15, TextAlignmentOptions.MidlineRight, progress.level >= SkillTreeSystem.RequiredLevelFor(node, r) ? c : new Color(0.96f, 0.60f, 0.52f, 1f),
+                detailW - 16f - 100f - 10f, y, 100, 30, "RankLevel_" + r);
+        }
+
+        // Requisitos do proximo grau.
+        float reqY = tableY + 24f + 6 * 34f + 12f;   // ~544
+        Color okCol = new Color(0.80f, 0.88f, 0.84f, 1f), badCol = new Color(0.96f, 0.60f, 0.52f, 1f);
+        if (!maxed)
+        {
+            int need = SkillTreeSystem.RequiredLevelFor(node, rank + 1);
+            SkRequirement(panel, progress.level >= need, "Nível do personagem: <b>" + need + "</b>" + (progress.level >= need ? "" : "   (atual: " + progress.level + ")"),
+                reqY, okCol, badCol, "ReqLevel");
+            if (!string.IsNullOrEmpty(node.prerequisiteId))
+            {
+                var prev = SkillTreeSystem.GetNode(survivor.id, node.prerequisiteId);
+                SkRequirement(panel, prereqMet, "Habilidade anterior: <b>" + (prev != null ? prev.displayName : "?") + "</b> (grau 1)",
+                    reqY + 32f, okCol, badCol, "ReqPrevious");
+            }
+            bool enough = progress.skillPoints >= node.pointCost;
+            SkRequirement(panel, enough, "Pontos: <b>" + node.pointCost + "</b>   (você tem " + progress.skillPoints + ")", reqY + 64f, okCol, badCol, "ReqPoints");
         }
         else
         {
-            MapText(nextBox, "Última habilidade deste ramo.", 17, TextAlignmentOptions.MidlineLeft, SkDim, 16, 40, inner - 32f, 30, "NextNone");
+            MapText(panel, "Esta habilidade está no grau máximo.", 18, TextAlignmentOptions.MidlineLeft, gold, 22, reqY + 8f, inner - 12f, 30, "MaxedText");
         }
 
-        // Requisitos.
-        var rq = MapText(panel, "REQUISITOS", 14, TextAlignmentOptions.MidlineLeft, SkDim, 22, 614, 300, 24, "ReqLabel");
-        rq.fontStyle = FontStyles.Bold;
-        rq.characterSpacing = 2f;
-        float rowY = 644f;
-        Color okCol = new Color(0.80f, 0.88f, 0.84f, 1f), badCol = new Color(0.96f, 0.60f, 0.52f, 1f);
-        SkRequirement(panel, levelMet, "Nível do personagem: <b>" + node.requiredLevel + "</b>" + (levelMet ? "" : "   (atual: " + progress.level + ")"),
-            rowY, okCol, badCol, "ReqLevel");
-        rowY += 36f;
-        if (!string.IsNullOrEmpty(node.prerequisiteId))
+        // Botao principal.
+        float by = 664f, bh = 52f;
+        if (maxed)
         {
-            var prev = SkillTreeSystem.GetNode(survivor.id, node.prerequisiteId);
-            SkRequirement(panel, prereqMet, "Habilidade anterior: <b>" + (prev != null ? prev.displayName : "?") + "</b>",
-                rowY, okCol, badCol, "ReqPrevious");
-        }
-
-        // Custo e pontos disponiveis.
-        var costLine = UIFactory.Img(panel, new Color(accent.r, accent.g, accent.b, 0.30f), "CostLine");
-        UIFactory.Place(costLine.rectTransform, new Vector2(0f, 1f), new Vector2(16f, -722f), new Vector2(inner, 1.5f));
-        costLine.raycastTarget = false;
-        SkImage(panel, "ui_points", Color.white, "CostIcon", new Vector2(0f, 1f), new Vector2(22f, -734f), new Vector2(38f, 38f));
-        MapText(panel, "CUSTO", 13, TextAlignmentOptions.MidlineLeft, SkDim, 72, 730, 200, 18, "CostLabel").fontStyle = FontStyles.Bold;
-        var cv = MapText(panel, node.pointCost + (node.pointCost == 1 ? " PONTO" : " PONTOS") + " DE HABILIDADE", 20,
-            TextAlignmentOptions.MidlineLeft, SkGoldCol, 72, 748, 280, 28, "CostValue");
-        cv.fontStyle = FontStyles.Bold;
-        SkFit(cv, 14f);
-        MapText(panel, "SEUS PONTOS", 13, TextAlignmentOptions.MidlineRight, SkDim, detailW - 16f - 160f, 730, 160, 18, "PointsHaveLabel").fontStyle = FontStyles.Bold;
-        bool enough = progress.skillPoints >= node.pointCost;
-        MapText(panel, progress.skillPoints.ToString(), 26, TextAlignmentOptions.MidlineRight, enough ? SkGreenText : badCol,
-            detailW - 16f - 160f, 746, 160, 32, "PointsHaveValue").fontStyle = FontStyles.Bold;
-
-        // Botao / estado.
-        float by = 790f, bh = 44f;
-        if (unlocked)
-        {
-            SkStatusBlock(panel, by, bh, inner, new Color(0.06f, 0.22f, 0.14f, 1f), new Color(0.25f, 0.85f, 0.50f, 0.95f),
-                "ui_check", SkGreen, "HABILIDADE DESBLOQUEADA", SkGreenText, "SkillAlreadyUnlocked");
+            SkStatusBlock(panel, by, bh, inner, new Color(0.14f, 0.10f, 0.03f, 1f), gold,
+                "ui_check", gold, "GRAU MÁXIMO: " + SkillTreeSystem.RankName(SkillTreeSystem.MaxRank).ToUpperInvariant(), gold, "SkillMaxedStatus");
         }
         else if (canUnlock)
         {
             string unlockId = node.id;
-            var b = MapButton(panel, "DESBLOQUEAR HABILIDADE", 20, () => UnlockMapSkill(unlockId), 16, by, inner, bh,
+            var b = MapButton(panel, "EVOLUIR PARA " + SkillTreeSystem.RankName(rank + 1).ToUpperInvariant(), 20, () => UnlockMapSkill(unlockId), 16, by, inner, bh,
                 new Color(1f, 0.70f, 0.14f, 1f), "UnlockSkillButton");
             var lbl = b.GetComponentInChildren<TMP_Text>();
             if (lbl)
@@ -545,30 +471,92 @@ public partial class MainMenuController
                 lbl.fontStyle = FontStyles.Bold;
                 lbl.characterSpacing = 2f;
             }
-            SkImage(b.transform, "ui_points", Color.white, "UnlockGlyph", new Vector2(0f, 0.5f), new Vector2(18f, 0f), new Vector2(30f, 30f));
         }
         else
         {
             string why;
-            if (!prereqMet)
-            {
-                var prev = SkillTreeSystem.GetNode(survivor.id, node.prerequisiteId);
-                why = "REQUER: " + (prev != null ? prev.displayName.ToUpperInvariant() : "HABILIDADE ANTERIOR");
-            }
-            else if (!levelMet) why = "REQUER NÍVEL " + node.requiredLevel;
+            if (!prereqMet) why = "REQUER A HABILIDADE ANTERIOR";
+            else if (!levelMet) why = "REQUER NÍVEL " + SkillTreeSystem.RequiredLevelFor(node, rank + 1);
             else why = "PONTOS INSUFICIENTES";
             SkStatusBlock(panel, by, bh, inner, new Color(0.065f, 0.078f, 0.088f, 1f), SkLockedLine,
-                locked ? "ui_lock" : "ui_points", new Color(0.62f, 0.69f, 0.73f, 1f), why, new Color(0.70f, 0.77f, 0.81f, 1f), "SkillLockedStatus");
+                state == SkState.Locked ? "ui_lock" : "ui_points", new Color(0.62f, 0.69f, 0.73f, 1f), why, new Color(0.70f, 0.77f, 0.81f, 1f), "SkillLockedStatus");
         }
+
+        // Redistribuir pontos (1a vez gratis; depois custa ouro). Pede confirmacao com um segundo clique.
+        int cost = SkillTreeSystem.ResetCost(progress);
+        string resetLabel = skResetArmed ? "CONFIRMAR: DEVOLVER TODOS OS PONTOS" : (cost == 0 ? "REDISTRIBUIR PONTOS  (GRÁTIS 1ª VEZ)" : "REDISTRIBUIR PONTOS  (" + cost + " OURO)");
+        var rb = MapButton(panel, resetLabel, 16, () =>
+        {
+            if (!skResetArmed) { skResetArmed = true; ShowMapSkills(selectedSkillId); return; }
+            skResetArmed = false;
+            ResetMapSkills();
+        }, 16, 734f, inner, 44f, skResetArmed ? new Color(0.62f, 0.07f, 0.09f, 1f) : new Color(0.10f, 0.14f, 0.17f, 1f), "ResetSkillsButton");
+        var rlb = rb.GetComponentInChildren<TMP_Text>();
+        if (rlb) { rlb.fontStyle = FontStyles.Bold; SkFit(rlb, 11f); }
+        MapText(panel, "Devolve os pontos gastos e a especialização. Os bônus da missão em andamento não mudam.", 12, TextAlignmentOptions.TopLeft, SkDim, 22, 786f, inner - 12f, 40, "ResetHint").textWrappingMode = TextWrappingModes.Normal;
+    }
+
+    /// <summary>Caixa no topo do painel de detalhes: especializacao (bloqueada, escolha ou escolhida).</summary>
+    void SkBuildSpecialization(RectTransform panel, SurvivorDef survivor, SurvivorProgress progress, float inner)
+    {
+        var box = UIKit.Frame(panel, "SpecBox", new Color(0.040f, 0.056f, 0.066f, 1f), new Color(0.20f, 0.27f, 0.31f, 1f), 1.5f);
+        UIFactory.Place(box, new Vector2(0f, 1f), new Vector2(16f, -14f), new Vector2(inner, 164f));
+        var specs = SkillTreeSystem.GetSpecs(survivor.id);
+        var chosen = SkillTreeSystem.GetSpec(progress);
+        var cap = MapText(box, "ESPECIALIZAÇÃO", 13, TextAlignmentOptions.MidlineLeft, SkDim, 12, 6, 240, 20, "SpecCaption");
+        cap.fontStyle = FontStyles.Bold; cap.characterSpacing = 2f;
+
+        if (chosen != null)
+        {
+            var n = MapText(box, chosen.name.ToUpperInvariant(), 24, TextAlignmentOptions.MidlineLeft, UIKit.Col.Gold, 12, 28, inner - 24f, 32, "SpecName");
+            n.fontStyle = FontStyles.Bold;
+            var d = MapText(box, chosen.description, 14, TextAlignmentOptions.TopLeft, new Color(0.84f, 0.89f, 0.91f, 1f), 12, 62, inner - 24f, 40, "SpecDesc");
+            d.textWrappingMode = TextWrappingModes.Normal;
+            var e = MapText(box, SkillTreeSystem.Describe(chosen.bonuses, "  ·  "), 13, TextAlignmentOptions.TopLeft, SkGreenText, 12, 104, inner - 24f, 54, "SpecEffects");
+            e.textWrappingMode = TextWrappingModes.Normal;
+            return;
+        }
+        if (progress.level < SkillTreeSystem.SpecializationLevel)
+        {
+            MapText(box, "Disponível no nível " + SkillTreeSystem.SpecializationLevel + ".", 20, TextAlignmentOptions.MidlineLeft, Color.white, 12, 34, inner - 24f, 30, "SpecLocked").fontStyle = FontStyles.Bold;
+            var names = new System.Text.StringBuilder("Escolha 1 de 2:  ");
+            for (int i = 0; i < specs.Count; i++) names.Append(i > 0 ? "  ou  " : "").Append(specs[i].name);
+            var t = MapText(box, names.ToString(), 15, TextAlignmentOptions.TopLeft, SkDim, 12, 72, inner - 24f, 70, "SpecPreview");
+            t.textWrappingMode = TextWrappingModes.Normal;
+            SkImage(box, "ui_lock", new Color(0.58f, 0.66f, 0.70f, 1f), "SpecLock", new Vector2(1f, 0f), new Vector2(-14f, 12f), new Vector2(30f, 30f));
+            return;
+        }
+
+        // Escolha: dois cartoes lado a lado.
+        float cw = (inner - 36f) / 2f;
+        for (int i = 0; i < specs.Count && i < 2; i++)
+        {
+            var sp = specs[i];
+            string spId = sp.id;
+            var card = UIKit.Frame(box, "SpecCard_" + i, new Color(0.07f, 0.075f, 0.04f, 1f), new Color(1f, 0.72f, 0.20f, 0.9f), 2f);
+            UIFactory.Place(card, new Vector2(0f, 1f), new Vector2(12f + i * (cw + 12f), -28f), new Vector2(cw, 128f));
+            var hit = card.gameObject.AddComponent<Image>();
+            hit.color = new Color(0f, 0f, 0f, 0f);
+            var btn = card.gameObject.AddComponent<Button>();
+            btn.targetGraphic = hit; btn.transition = Selectable.Transition.None;
+            btn.onClick.AddListener(() => { ZombitAudio.PlayUI(); ChooseMapSpecialization(spId); });
+            card.gameObject.AddComponent<UIButtonFx>();
+            var n = MapText(card, sp.name.ToUpperInvariant(), 16, TextAlignmentOptions.MidlineLeft, UIKit.Col.Gold, 8, 4, cw - 16f, 26, "SpecCardName");
+            n.fontStyle = FontStyles.Bold; SkFit(n, 11f);
+            var e = MapText(card, SkillTreeSystem.Describe(sp.bonuses, "\n"), 12, TextAlignmentOptions.TopLeft, new Color(0.84f, 0.89f, 0.91f, 1f), 8, 32, cw - 16f, 92, "SpecCardEffects");
+            e.textWrappingMode = TextWrappingModes.Normal;
+            e.enableAutoSizing = true; e.fontSizeMin = 9f; e.fontSizeMax = 12f;
+        }
+        MapText(box, "TOQUE PARA ESCOLHER", 11, TextAlignmentOptions.MidlineRight, SkDim, 12, 6, inner - 24f, 20, "SpecHint");
     }
 
     void SkRequirement(RectTransform panel, bool met, string richText, float y, Color okCol, Color badCol, string name)
     {
         SkImage(panel, met ? "ui_check" : "ui_cross", met ? SkGreen : new Color(0.95f, 0.38f, 0.32f, 1f), name + "Mark",
             new Vector2(0f, 1f), new Vector2(24f, -(y + 5f)), new Vector2(22f, 22f));
-        var t = MapText(panel, richText, 18, TextAlignmentOptions.MidlineLeft, met ? okCol : badCol, 56, y, 440, 32, name);
+        var t = MapText(panel, richText, 17, TextAlignmentOptions.MidlineLeft, met ? okCol : badCol, 56, y, 460, 32, name);
         t.richText = true;
-        SkFit(t, 13f);
+        SkFit(t, 12f);
     }
 
     void SkStatusBlock(RectTransform panel, float y, float h, float width, Color fill, Color border,
@@ -580,9 +568,9 @@ public partial class MainMenuController
         UIFactory.Stretch(row);
         UIFactory.HLayout(row, 10f, TextAnchor.MiddleCenter);
         SkGlyph(row, glyph, glyphCol, 24f, "StatusGlyph");
-        var t = UIFactory.Txt(row, text, 19f, TextAlignmentOptions.Center, textCol, "StatusText");
+        var t = UIFactory.Txt(row, text, 18f, TextAlignmentOptions.Center, textCol, "StatusText");
         t.fontStyle = FontStyles.Bold;
-        t.characterSpacing = 1.5f;
+        t.characterSpacing = 1.2f;
         t.textWrappingMode = TextWrappingModes.NoWrap;
     }
 
@@ -593,8 +581,9 @@ public partial class MainMenuController
         var bar = UIKit.Frame(s, "SkillLegend", new Color(0.020f, 0.030f, 0.040f, 0.78f), new Color(0.16f, 0.22f, 0.26f, 1f), 1.5f);
         UIFactory.Place(bar, new Vector2(0f, 1f), new Vector2(SkLeft, -(SkTop + SkPanelH + 14f)), new Vector2(w, 52f));
 
-        string[] labels = { "Habilidade desbloqueada", "Disponível para desbloquear", "Bloqueada (requer anterior)", "Habilidade selecionada" };
+        string[] labels = { "Com grau (evoluída)", "Pode evoluir agora", "Bloqueada (nível ou anterior)", "Grau máximo" };
         float cell = w / 4f;
+        Color gold = new Color(1f, 0.78f, 0.28f, 1f);
         for (int i = 0; i < 4; i++)
         {
             var item = UIFactory.Node("LegendItem_" + i, bar);
@@ -603,7 +592,7 @@ public partial class MainMenuController
 
             RectTransform mark;
             if (i == 0)
-                mark = SkBadge(item, "LegendUnlocked", SkGreen, new Color(0.03f, 0.18f, 0.11f, 1f), 28f, "ui_check", SkGreen, 16f);
+                mark = SkBadge(item, "LegendRanked", SkGreen, new Color(0.03f, 0.18f, 0.11f, 1f), 28f, "ui_check", SkGreen, 16f);
             else if (i == 1)
             {
                 mark = SkBadge(item, "LegendAvailable", SkGoldCol, new Color(0.07f, 0.055f, 0.03f, 1f), 28f, null, SkGoldCol, 0f);
@@ -612,12 +601,7 @@ public partial class MainMenuController
             else if (i == 2)
                 mark = SkBadge(item, "LegendLocked", new Color(0.55f, 0.62f, 0.66f, 1f), new Color(0.05f, 0.065f, 0.075f, 1f), 28f, "ui_lock", new Color(0.62f, 0.69f, 0.73f, 1f), 15f);
             else
-            {
-                mark = SkBadge(item, "LegendSelected", SkGoldCol, new Color(0.07f, 0.055f, 0.03f, 1f), 28f, null, SkGoldCol, 0f);
-                var st = UIFactory.Img(mark, SkGoldCol, "Star");
-                st.sprite = UIKit.Star; st.type = Image.Type.Simple; st.raycastTarget = false;
-                UIFactory.Place(st.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(16f, 16f));
-            }
+                mark = SkBadge(item, "LegendMaxed", gold, new Color(0.12f, 0.09f, 0.03f, 1f), 28f, "ui_check", gold, 16f);
 
             var t = UIFactory.Txt(item, labels[i], 17f, TextAlignmentOptions.MidlineLeft, new Color(0.74f, 0.80f, 0.84f, 1f), "LegendText");
             t.textWrappingMode = TextWrappingModes.NoWrap;
@@ -625,28 +609,30 @@ public partial class MainMenuController
     }
 
     // ---------- pecas pequenas ----------
-    /// <summary>Chave do icone de uma habilidade, escolhida pelo bonus principal dela.</summary>
+    /// <summary>Chave do icone de uma habilidade, escolhida pela estatistica dela.</summary>
     static string SkIconKey(string survivorId, SkillTreeNode node)
     {
-        var b = node != null ? node.bonuses : null;
-        if (b == null) return "star_up";
-        if (b.grenadeRadiusPercent > 0f) return "explosion";
-        if (b.abilityPowerPercent > 0f) return survivorId == "engineer" ? "chip" : "grenade";
-        if (b.turretFireRatePercent > 0f) return "gear";
-        if (b.abilityCooldownReduction > 0f) return "clock";
-        if (b.healingPercent > 0f) return "medcross";
-        if (b.critDamagePercent > 0f) return "skull";
-        if (b.critChance > 0f) return "crosshair";
-        if (b.accuracyBonus > 0f) return "bullseye";
-        if (b.rangePercent > 0f) return "scope";
-        if (b.fireRatePercent > 0f) return "bolt";
-        if (b.damagePercent > 0f) return "bullets";
-        if (b.goldPercent > 0f) return "coins";
-        if (b.dropPercent > 0f) return "backpack";
-        if (b.xpPercent > 0f) return "star_up";
-        if (b.healthPercent > 0f) return "heart";
-        if (b.defenseFlat > 0f) return "shield";
-        return "star_up";
+        if (node == null) return "star_up";
+        switch (node.stat)
+        {
+            case SkillStat.Damage: return "bullets";
+            case SkillStat.FireRate: return "bolt";
+            case SkillStat.Health: return "heart";
+            case SkillStat.Range: return "scope";
+            case SkillStat.CritChance: return "crosshair";
+            case SkillStat.CritDamage: return "skull";
+            case SkillStat.Accuracy: return "bullseye";
+            case SkillStat.Defense: return "shield";
+            case SkillStat.Xp: return "star_up";
+            case SkillStat.Gold: return "coins";
+            case SkillStat.Drop: return "backpack";
+            case SkillStat.AbilityPower: return survivorId == "engineer" ? "chip" : "grenade";
+            case SkillStat.TurretFireRate: return "gear";
+            case SkillStat.Cooldown: return "clock";
+            case SkillStat.Healing: return "medcross";
+            case SkillStat.GrenadeRadius: return "explosion";
+            default: return "star_up";
+        }
     }
 
     /// <summary>Imagem posicionada (ancora = pivo). Retorna null se o PNG nao existir.</summary>
@@ -721,16 +707,45 @@ public partial class MainMenuController
         return t;
     }
 
+    // ---------- acoes ----------
+    void SkSaveNow(SaveData save)
+    {
+        if (GameSession.DebugRun) return;
+        try { SaveSystem.Save(save); }
+        catch (System.Exception e) { Debug.LogWarning("Zombit: falha ao salvar habilidades: " + e.Message); }
+    }
+
     void UnlockMapSkill(string nodeId)
     {
         var save = GameSession.Save;
         if (save == null) return;
-        if (SkillTreeSystem.TryUnlock(save, SkillsSurvivorId(save), nodeId, out string message))
+        string sid = SkillsSurvivorId(save);
+        if (SkillTreeSystem.TryUnlock(save, sid, nodeId, out string msg))
         {
-            if (!GameSession.DebugRun) SaveSystem.Save(save);
-            Toast(message);
-            ShowMapSkills(nodeId);
+            ZombitAudio.PlayUI();
+            SkSaveNow(save);
         }
-        else Toast(message);
+        Toast(msg);
+        ShowMapSkills(nodeId);
+    }
+
+    void ChooseMapSpecialization(string specId)
+    {
+        var save = GameSession.Save;
+        if (save == null) return;
+        string sid = SkillsSurvivorId(save);
+        if (SkillTreeSystem.TryChooseSpecialization(save, sid, specId, out string msg)) SkSaveNow(save);
+        Toast(msg);
+        ShowMapSkills(selectedSkillId);
+    }
+
+    void ResetMapSkills()
+    {
+        var save = GameSession.Save;
+        if (save == null) return;
+        string sid = SkillsSurvivorId(save);
+        if (SkillTreeSystem.TryReset(save, sid, out string msg)) SkSaveNow(save);
+        Toast(msg);
+        ShowMapSkills(selectedSkillId);
     }
 }
