@@ -59,6 +59,10 @@ public class Enemy : MonoBehaviour
     bool kindReady;
     public EnemyKind Kind { get { EnsureKind(); return kind; } }
 
+    // Classificacao por nome calculada UMA vez por nome (antes: ToLowerInvariant + varios Contains a cada spawn).
+    // Preferivel: preencher EnemyData.kind explicitamente e nem chegar aqui.
+    static readonly Dictionary<string, EnemyKind> kindByName = new();
+
     void EnsureKind()
     {
         if (kindReady) return;
@@ -79,7 +83,17 @@ public class Enemy : MonoBehaviour
         if (kindOverride != EnemyKind.Auto) return kindOverride;
         if (data == null || IsBoss) return EnemyKind.Walker;
         if (data.kind != EnemyKind.Auto) return data.kind;
-        string n = (data.displayName ?? string.Empty).ToLowerInvariant();
+        string key = data.displayName ?? string.Empty;
+        if (!kindByName.TryGetValue(key, out var k))
+        {
+            k = ClassifyByName(key.ToLowerInvariant());
+            kindByName[key] = k;
+        }
+        return k;
+    }
+
+    static EnemyKind ClassifyByName(string n)
+    {
         if (n.Contains("vomitador") || n.Contains("tóxica") || n.Contains("atirador") || n.Contains("sniper") ||
             n.Contains("lança") || n.Contains("granadeiro")) return EnemyKind.Spitter;
         if (n.Contains("cão") || n.Contains("corredor") || n.Contains("motoqueiro")) return EnemyKind.Runner;
@@ -113,6 +127,10 @@ public class Enemy : MonoBehaviour
 
     static readonly List<Enemy> leftQueue = new();
     static readonly List<Enemy> rightQueue = new();
+    // Vaga/posicao POR ALVO: na dupla/trio, zumbis que perseguem sobreviventes diferentes nao dividem a mesma fila.
+    static readonly Dictionary<Transform, float> prevSlotByTarget = new();
+    static readonly Dictionary<Transform, int> rankByTarget = new();
+    static readonly List<Health> explosionVictims = new();
     static int queueFrame = -1;
     static readonly System.Comparison<Enemy> ByDistance = (a, b) => a.distToTarget.CompareTo(b.distToTarget);
 
@@ -270,15 +288,20 @@ public class Enemy : MonoBehaviour
     static void AssignSlots(List<Enemy> list)
     {
         list.Sort(ByDistance);
-        float previous = float.NegativeInfinity;
+        prevSlotByTarget.Clear();
+        rankByTarget.Clear();
         for (int i = 0; i < list.Count; i++)
         {
             Enemy e = list[i];
-            // Respeita o stopDistance proprio (chefes ficam mais longe) e o espaco do da frente.
+            Transform tg = e.target;
+            float previous = prevSlotByTarget.TryGetValue(tg, out var pv) ? pv : float.NegativeInfinity;
+            int rank = rankByTarget.TryGetValue(tg, out var rk) ? rk : 0;
+            // Respeita o stopDistance proprio (chefes ficam mais longe) e o espaco do da frente (do MESMO alvo).
             float slot = Mathf.Max(e.stopDistance, previous + QueueSpacing);
             e.slotDistance = slot;
-            e.queueRank = i;
-            previous = slot;
+            e.queueRank = rank;
+            prevSlotByTarget[tg] = slot;
+            rankByTarget[tg] = rank + 1;
         }
     }
 
@@ -383,14 +406,28 @@ public class Enemy : MonoBehaviour
         Destroy(gameObject, 0.35f);
     }
 
-    /// <summary>Explode ao morrer: fere o heroi se ele estiver perto. Matar de longe evita o dano.</summary>
+    /// <summary>Explode ao morrer: fere TODOS os sobreviventes proximos (dupla/trio inclusive). Matar de longe evita o dano.</summary>
     void ExplodeOnDeath(Vector3 feet)
     {
         PixelCombatVFX.Explosion(feet, ExplosionRadius);
-        if (target == null || data == null) return;
-        if (Mathf.Abs(target.position.x - transform.position.x) > ExplosionRadius) return;
-        if (targetHealth == null) targetHealth = target.GetComponent<Health>();
-        if (targetHealth != null) targetHealth.Take(data.damage * DamageMult * ExplosionDamageMult);
+        if (data == null) return;
+        float dmg = data.damage * DamageMult * ExplosionDamageMult;
+        float x = transform.position.x;
+
+        // Coleta primeiro e so depois aplica o dano: Take pode derrubar alguem e mexer na lista do esquadrao.
+        explosionVictims.Clear();
+        if (target != null)
+        {
+            if (targetHealth == null) targetHealth = target.GetComponent<Health>();
+            if (targetHealth != null && Mathf.Abs(target.position.x - x) <= ExplosionRadius) explosionVictims.Add(targetHealth);
+        }
+        foreach (var m in HeroSquad.Members)
+        {
+            if (m.health == null || !m.Alive || explosionVictims.Contains(m.health)) continue;
+            if (Mathf.Abs(m.health.transform.position.x - x) <= ExplosionRadius) explosionVictims.Add(m.health);
+        }
+        for (int i = 0; i < explosionVictims.Count; i++) explosionVictims[i].Take(dmg);
+        explosionVictims.Clear();
     }
 
     void OnDestroy()

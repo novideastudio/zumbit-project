@@ -12,6 +12,8 @@ public class SurvivorAbilities : MonoBehaviour
     float grenadeCd = 3f;
     float grenadeCooldownDuration = 3f;
     bool grenadeInFlight;
+    // Sem alvo, a busca da granada roda no maximo a cada 0,15 s (antes: todo frame).
+    float nextGrenadeScan;
 
     const float GrenadeBaseCooldown = 8f;
     const float GrenadeBaseRadius = 2.5f;
@@ -47,12 +49,17 @@ public class SurvivorAbilities : MonoBehaviour
     {
         if (def == null || hp == null || hp.Current <= 0f) return;
         // A torreta recebe uma fracao do bonus fixo de dano do Engineer (nivel/itens), senao ficaria irrelevante nos niveis altos.
+        // Tambem herda o dano PERCENTUAL do heroi (habilidades de arvore + afixos de itens), senao ficava para tras nos niveis altos.
         if (turretHero != null && turretWeapon != null && hero != null)
+        {
             turretHero.damageBonus = hero.damageBonus * Balance.TurretBonusShare * (1f + bonuses.abilityPowerPercent) / Mathf.Max(0.1f, turretWeapon.BonusScale);
+            turretHero.damageMult = hero.damageMult;
+            turretHero.affixDamage = hero.affixDamage;
+        }
         if (def.utility == UtilityType.Grenade)
         {
             grenadeCd -= Time.deltaTime;
-            if (grenadeCd <= 0f && !grenadeInFlight)
+            if (grenadeCd <= 0f && !grenadeInFlight && Time.time >= nextGrenadeScan)
             {
                 var target = Closest(10f);
                 if (target != null)
@@ -61,6 +68,7 @@ public class SurvivorAbilities : MonoBehaviour
                     grenadeCooldownDuration = GrenadeCooldown;
                     StartCoroutine(ThrowGrenade(target));
                 }
+                else nextGrenadeScan = Time.time + 0.15f;
             }
         }
         else if (def.utility == UtilityType.FieldMedic)
@@ -121,7 +129,9 @@ public class SurvivorAbilities : MonoBehaviour
         Vector3 blastPoint = end;
         blastPoint.y -= 0.35f;
         float radius = GrenadeBaseRadius * (1f + bonuses.grenadeRadiusPercent);
-        float damage = (hero ? (hero.weapon.ReferenceDamage + hero.damageBonus) * 3f : 30f) * (1f + bonuses.abilityPowerPercent);
+        // Dano base (bonus fixo) x poder de habilidade x dano percentual do heroi (arvore + afixos), como a torreta.
+        float percent = hero ? hero.damageMult * (1f + hero.affixDamage) : 1f;
+        float damage = (hero ? (hero.weapon.ReferenceDamage + hero.damageBonus) * 3f : 30f) * (1f + bonuses.abilityPowerPercent) * percent;
         for (int i = Enemy.Alive.Count - 1; i >= 0; i--)
         {
             var e = Enemy.Alive[i];
@@ -225,6 +235,12 @@ public class SurvivorAbilities : MonoBehaviour
 
     void SpawnTurret()
     {
+        // A torreta clona a arma do heroi: sem Hero/arma (ex.: ordem de inicializacao errada) nao ha o que clonar.
+        if (hero == null || hero.weapon == null)
+        {
+            Debug.LogWarning("Zombit: SpawnTurret ignorado, o Hero ou a arma ainda nao estao prontos.");
+            return;
+        }
         var tuning = GameTuning.Current;
         var go = new GameObject("Turret");
         var sr = go.AddComponent<SpriteRenderer>();
@@ -259,6 +275,7 @@ public class SurvivorAbilities : MonoBehaviour
         w.magazineSize = 30;
         w.reloadTime = 1.5f;
         w.soundPitch = 1.05f;
+        w.pierceTargets = 0;
         th.weapon = w;
         turretWeapon = w;
         turretHero = th;

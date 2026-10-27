@@ -31,6 +31,9 @@ public class Hero : MonoBehaviour
         ? Mathf.Clamp01(1f - (reloadEnd - Time.time) / weapon.reloadTime) : 1f;
     public bool Reloading => Time.time < reloadEnd;
     float nextShot, reloadEnd, nextShotSound;
+    // Sem alvo no alcance, a busca roda no maximo a cada ScanInterval (antes: todo frame, por heroi e torreta).
+    const float ScanInterval = 0.1f;
+    float nextScan;
     // Limite de sons de disparo por segundo: MP5-SD/MAC-10 atiram 9-13x/s e roubariam as 12 vozes
     // de audio dos zumbis e explosoes. Acima de ~10/s o ouvido nao distingue os tiros mesmo.
     const float MinShotSoundInterval = 0.09f;
@@ -74,15 +77,18 @@ public class Hero : MonoBehaviour
     }
     void Start() => Ammo = weapon.magazineSize;
 
+    float EffectiveRange => weapon.range * rangeMult * (1f + affixRange);
+
     void Update()
     {
         if (health != null && health.Current <= 0f) return;   // caido nao atira (modo dupla)
         if (Reloading) return;
         if (Ammo <= 0) { Ammo = weapon.magazineSize; reloadEnd = Time.time + weapon.reloadTime; return; }
         if (Time.time < nextShot) return;
+        if (Time.time < nextScan) return;
 
         var t = FindClosest();
-        if (!t) return;
+        if (!t) { nextScan = Time.time + ScanInterval; return; }
 
         nextShot = Time.time + 1f / (weapon.shotsPerSecond * fireRateMult * (1f + affixFireRate));
         Ammo--;
@@ -91,7 +97,7 @@ public class Hero : MonoBehaviour
 
     Enemy FindClosest()
     {
-        float r = weapon.range * rangeMult * (1f + affixRange);
+        float r = EffectiveRange;
         if (focusTarget != null)
         {
             if (focusTarget.IsDead) focusTarget = null;
@@ -119,7 +125,8 @@ public class Hero : MonoBehaviour
         Vector3 origin = MuzzlePosition;
         Vector3 dest = t.AimPoint;
         float acc = Mathf.Clamp01(weapon.accuracy + accuracyBonus + affixAccuracy);
-        if (Random.value > acc)
+        bool missed = Random.value > acc;
+        if (missed)
             dest += (Vector3)(Random.insideUnitCircle * Mathf.Max(0.2f, weapon.spread));
 
         // O bonus fixo (nivel/itens) e normalizado pela cadencia: mesmo ganho de DPS em todas as armas.
@@ -128,8 +135,9 @@ public class Hero : MonoBehaviour
         if (critical) dmg *= Mathf.Max(1f, critMult * (1f + affixCritDamage));
 
         // Projeteis vem de um pool (veja Projectile.Spawn): sem Instantiate/Destroy a cada tiro.
+        // Tiro errado causa dano reduzido (Projectile.MissDamageMult) e o projetil morre ao passar do alcance da arma.
         var p = Projectile.Spawn(weapon.projectilePrefab, origin);
-        p.Launch(dest, dmg, critical, weapon.pierceTargets, weapon.pierceFalloff, t);
+        p.Launch(dest, dmg, critical, weapon.pierceTargets, weapon.pierceFalloff, t, missed, EffectiveRange);
         // Brief pixel-art muzzle flash, aligned with the shot direction.
         PixelCombatVFX.Muzzle(origin, (dest - origin).normalized);
         // O PixelCharacterMotion.Recoil() existia mas nunca era chamado: agora o heroi "chuta" a cada tiro.

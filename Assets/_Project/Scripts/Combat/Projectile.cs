@@ -8,6 +8,10 @@ public class Projectile : MonoBehaviour
     public float hitRadius = 0.6f;
 
     const float MaxLife = 2f;
+    /// <summary>Tiro que errou a mira (de raspao): causa so esta fracao do dano em quem atingir. Faz a precisao pesar de verdade.</summary>
+    public const float MissDamageMult = 0.6f;
+    /// <summary>O projetil some depois de percorrer alcance x esta margem (antes voava 2 s = 36 unidades).</summary>
+    const float RangeSlack = 1.2f;
 
     Vector3 dir;
     float damage;
@@ -170,7 +174,10 @@ public class Projectile : MonoBehaviour
         return trailMaterial;
     }
 
-    public void Launch(Vector3 dest, float dmg, bool isCritical = false, int pierce = 0, float falloff = 0.5f, Enemy target = null)
+    /// <param name="missed">Tiro que errou a mira: dano multiplicado por MissDamageMult.</param>
+    /// <param name="maxRange">Alcance da arma; o projetil some depois de alcance x 1,2. 0 = vida padrao (2 s).</param>
+    public void Launch(Vector3 dest, float dmg, bool isCritical = false, int pierce = 0, float falloff = 0.5f,
+        Enemy target = null, bool missed = false, float maxRange = 0f)
     {
         intendedTarget = target;
         missReported = false;
@@ -181,9 +188,10 @@ public class Projectile : MonoBehaviour
         dir = dest - transform.position;
         if (dir.sqrMagnitude < 0.0001f) dir = Vector3.right;
         dir.Normalize();
-        damage = dmg;
+        damage = missed ? dmg * MissDamageMult : dmg;
         critical = isCritical;
         transform.right = dir;
+        life = maxRange > 0f ? Mathf.Min(MaxLife, maxRange * RangeSlack / Mathf.Max(0.1f, speed)) : MaxLife;
 
         if (trail != null)
         {
