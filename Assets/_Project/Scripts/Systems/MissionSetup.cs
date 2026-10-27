@@ -241,6 +241,10 @@ public class MissionSetup : MonoBehaviour
 
         var pause = new GameObject("MissionPauseMenu").AddComponent<MissionPauseMenu>();
         pause.flow = flow;
+
+        // Offensive posture is opt-in and never installed in DPS training.
+        if (!GameSession.IsRange && GetComponent<SquadCombatPosture>() == null)
+            gameObject.AddComponent<SquadCombatPosture>();
     }
 
     /// <summary>Arma, atributos, progresso, sprite e posicao de UM sobrevivente.</summary>
