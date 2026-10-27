@@ -172,6 +172,7 @@ public partial class MainMenuController
         GameSession.Location = new LocationDef
         {
             id = "range",
+            isRange = true,
             name = "Estande de Tiro",
             description = "Area de treinamento para testar armas, alcance e dano.",
             theme = "escola",

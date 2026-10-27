@@ -57,7 +57,7 @@ public partial class MainMenuController
         }
         else
         {
-            var close = UIKit.Button(tabs, "X   VOLTAR AO MUNDO", ShowMap, UIKit.BtnStyle.Danger, UIKit.Size.Body, "NavClose");
+            var close = UIKit.Button(tabs, "X   VOLTAR", ReturnFromUtility, UIKit.BtnStyle.Danger, UIKit.Size.Body, "NavClose");
             UIFactory.Elem(close.gameObject, 290f, 60f);
         }
         return header.rectTransform;

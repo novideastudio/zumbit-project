@@ -59,7 +59,7 @@ public partial class MainMenuController
             var data = SaveSystem.Load(slot);
             if (data == null) return;
             UseSave(data);
-            ShowMap();
+            ShowHome();
         }, UIFactory.Red, "BtnLoad");
         UIFactory.Stretch((RectTransform)load.transform, 0.62f, 0.2f, 0.80f, 0.8f);
         load.interactable = d != null;
@@ -244,7 +244,7 @@ public partial class MainMenuController
         selNote = UIFactory.Txt(s, "", UIKit.Size.Body, TextAlignmentOptions.Center, UIKit.Col.TextDim, "Note");
         UIFactory.Place(selNote.rectTransform, BotC, new Vector2(0, 100), new Vector2(1400, 34));
 
-        var back = UIKit.Button(s, "VOLTAR", () => { if (newGameMode) Show("main"); else ShowMap(); },
+        var back = UIKit.Button(s, "VOLTAR", () => { if (newGameMode) Show("main"); else ShowHome(); },
             UIKit.BtnStyle.Secondary, 26, "BackButton");
         UIFactory.Place((RectTransform)back.transform, BotC, new Vector2(-300, 20), new Vector2(360, 70));
         var confirm = UIKit.Button(s, "INICIAR CAMPANHA", OnConfirmSurvivor, UIKit.BtnStyle.Primary, 26, "ConfirmButton");
@@ -310,7 +310,7 @@ public partial class MainMenuController
             GameSession.Save.GetProgress(selected.id);
             SaveSystem.Save(GameSession.Save);
         }
-        ShowMap();
+        ShowHome();
     }
 
 

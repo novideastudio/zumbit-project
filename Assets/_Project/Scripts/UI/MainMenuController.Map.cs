@@ -33,9 +33,9 @@ public partial class MainMenuController
         mapBackdrop.transform.SetAsFirstSibling();
 
         // ---- layout mobile: barra superior (perfil, ouro, sucata, capitulo) + menu estreito ----
-        BuildHubSidebarMobile(s);
-        BuildHubTopBar(s, save, surv, prog);
-        BuildHubChapterSelector(s, save);
+        // Removido: BuildHubSidebarMobile(s);
+        // Removido: BuildHubTopBar(s, save, surv, prog);
+        // Removido: BuildHubChapterSelector(s, save);
 
         // ---- mapa ----
         var mapArea = UIKit.Frame(s, "MapArea", new Color(0.018f, 0.026f, 0.031f, 1f), UIKit.Col.Border, 2f);
@@ -74,6 +74,8 @@ public partial class MainMenuController
         // ---- painel da missao (rolavel) + faixa da equipe ----
         BuildHubMissionPanelMobile(s);
         BuildHubBottomMobile(s, save, surv, prog);
+        var hiddenSquad = s.Find("HubSquadPanelM");
+        if (hiddenSquad != null) hiddenSquad.gameObject.SetActive(false);
 
         LocationDef start = selectedLoc;
         if (start == null)
@@ -86,6 +88,7 @@ public partial class MainMenuController
         // continuam utilizando os prefabs editaveis normalmente.
         Show("map");
         SelectLocation(start);
+        SetupCleanCampaign(s, mapArea);
 
         // Aviso pendente (ex.: jogo fechado no meio de uma missao, abandono, derrota).
         if (!string.IsNullOrEmpty(save.pendingNotice))
@@ -315,7 +318,7 @@ public partial class MainMenuController
 
         // Cartao ilustrado: imagem da regiao em cima, numero no canto, nome/estrelas no rodape.
         // Os sprites de Art/Map/Locations podem ser trocados sem editar o codigo.
-        var button = UIFactory.Btn(parent, string.Empty, 10f, () => SelectLocation(location), fill, "Node_" + loc.id);
+        var button = UIFactory.Btn(parent, string.Empty, 10f, () => ToggleCampaignLocation(location), fill, "Node_" + loc.id);
         var rt = (RectTransform)button.transform;
         Vector2 anchor = new Vector2(Mathf.Clamp01(loc.mapX), Mathf.Clamp01(loc.mapY));
         rt.anchorMin = anchor; rt.anchorMax = anchor; rt.pivot = new Vector2(0.5f, 0.5f);

@@ -442,7 +442,7 @@ public partial class MainMenuController : MonoBehaviour
         var d = SaveSystem.LoadMostRecent();
         if (d == null) { Toast("Nenhum jogo salvo."); return; }
         UseSave(d);
-        ShowMap();
+        ShowHome();
     }
 
     void OnQuit()

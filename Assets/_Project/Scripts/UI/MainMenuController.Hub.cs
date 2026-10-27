@@ -162,7 +162,7 @@ public partial class MainMenuController
     void GoToTitleScreen()
     {
         if (GameSession.Save != null && !GameSession.DebugRun) SaveSystem.Save(GameSession.Save);
-        Show("main");
+        ShowHome();
     }
 
     void AddHomeSideButton(RectTransform parent)
