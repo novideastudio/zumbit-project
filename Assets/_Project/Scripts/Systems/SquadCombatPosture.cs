@@ -28,6 +28,7 @@ public sealed class SquadCombatPosture : MonoBehaviour
     Button toggle;
     TMP_Text label;
     bool offensive;
+    public bool IsOffensive => offensive;
     float nextDecision;
     MissionFlow flow;
     bool hasStarted;

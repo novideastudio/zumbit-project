@@ -4,11 +4,15 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Rotulo flutuante sobre CADA sobrevivente: "CLASSE  NV x" (o nivel e so DELE) e, logo abaixo,
-/// uma barrinha de vida. O nick do jogador aparece no painel de wave do HUD (HudController).
+/// uma barrinha de vida. Com a postura OFENSIVA ativa, uma caveira avermelhada aparece antes do nome da classe.
 /// </summary>
 public class PlayerNicknameDisplay : MonoBehaviour
 {
     const float BarWidth = 124f, BarHeight = 10f;
+    const float SkullSize = 17f, SkullGap = 5f;
+    static readonly Color SkullTint = new Color(1f, 0.34f, 0.30f, 1f);
+    static Sprite skullSprite;
+    static bool skullTried;
 
     Transform target;
     SpriteRenderer targetSprite;
@@ -16,10 +20,12 @@ public class PlayerNicknameDisplay : MonoBehaviour
     Health targetHealth;
     SurvivorDef def;
 
-    RectTransform canvasRect, labelRect, barRect, fillRect;
+    RectTransform canvasRect, labelRect, barRect, fillRect, skullRect;
     TMP_Text label;
-    Image barBack, fill;
+    Image barBack, fill, skull;
     Camera cachedCamera;
+    SquadCombatPosture posture;
+    float nextPostureLookup;
     int shownLevel = -1;
     float shownFraction = -1f;
 
@@ -30,6 +36,16 @@ public class PlayerNicknameDisplay : MonoBehaviour
         var display = new GameObject("HeroTag_" + (survivor != null ? survivor.id : hero.name)).AddComponent<PlayerNicknameDisplay>();
         display.Configure(hero, survivor);
         return display;
+    }
+
+    static Sprite SkullSprite()
+    {
+        if (skullTried) return skullSprite;
+        skullTried = true;
+        var tex = Resources.Load<Texture2D>("Art/Home/posture_skull");
+        if (tex != null)
+            skullSprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+        return skullSprite;
     }
 
     void Configure(Transform hero, SurvivorDef survivor)
@@ -62,6 +78,18 @@ public class PlayerNicknameDisplay : MonoBehaviour
         sh.effectColor = new Color(0f, 0f, 0f, 0.9f);
         sh.effectDistance = new Vector2(2f, -2f);
 
+        var sprite = SkullSprite();
+        if (sprite != null)
+        {
+            skull = UIFactory.Img(canvas.transform, SkullTint, "OffensiveSkull");
+            skull.sprite = sprite;
+            skull.preserveAspect = true;
+            skull.raycastTarget = false;
+            skullRect = skull.rectTransform;
+            UIFactory.Place(skullRect, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(SkullSize, SkullSize));
+            skull.gameObject.SetActive(false);
+        }
+
         barBack = UIFactory.Img(canvas.transform, new Color(0.02f, 0.03f, 0.04f, 0.88f), "HeroTagBar");
         barRect = barBack.rectTransform;
         UIFactory.Place(barRect, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(BarWidth, BarHeight));
@@ -85,6 +113,17 @@ public class PlayerNicknameDisplay : MonoBehaviour
     {
         if (label != null && label.gameObject.activeSelf != v) label.gameObject.SetActive(v);
         if (barBack != null && barBack.gameObject.activeSelf != v) barBack.gameObject.SetActive(v);
+        if (!v && skull != null && skull.gameObject.activeSelf) skull.gameObject.SetActive(false);
+    }
+
+    bool OffensiveActive()
+    {
+        if (posture == null && Time.unscaledTime >= nextPostureLookup)
+        {
+            nextPostureLookup = Time.unscaledTime + 0.5f;
+            posture = FindFirstObjectByType<SquadCombatPosture>();
+        }
+        return posture != null && posture.IsOffensive && !GameSession.IsRange;
     }
 
     void LateUpdate()
@@ -118,6 +157,18 @@ public class PlayerNicknameDisplay : MonoBehaviour
         {
             barRect.anchoredPosition = local + new Vector2(0f, 6f);
             labelRect.anchoredPosition = local + new Vector2(0f, 26f);
+
+            if (skull != null)
+            {
+                bool offensive = OffensiveActive();
+                if (skull.gameObject.activeSelf != offensive) skull.gameObject.SetActive(offensive);
+                if (offensive)
+                {
+                    // O texto e centralizado: a caveira fica logo antes do primeiro caractere da classe.
+                    float textWidth = label.preferredWidth;
+                    skullRect.anchoredPosition = local + new Vector2(-(textWidth * 0.5f + SkullGap + SkullSize * 0.5f), 26f);
+                }
+            }
         }
     }
 }
