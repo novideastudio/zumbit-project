@@ -11,7 +11,7 @@ using UnityEngine.UI;
 /// Criado pelo MissionSetup quando GameSession.IsRange. Nao ha ondas, XP, loot nem penalidade.
 /// Ajustes visuais (posicao do painel, distancias, presets) ficam nas constantes abaixo.
 /// </summary>
-public class ShootingRange : MonoBehaviour
+public partial class ShootingRange : MonoBehaviour
 {
     public static ShootingRange Instance { get; private set; }
     public static readonly DpsTracker Tracker = new DpsTracker();
@@ -90,6 +90,7 @@ public class ShootingRange : MonoBehaviour
         // Espera o WaveBackground/CameraFramer terminar o enquadramento antes de guardar/restaurar a camera.
         Invoke(nameof(InitializeRange), 0.15f);
         Invoke(nameof(SetHud), 0.4f);
+        StartCoroutine(InstallTrainingFormation());
     }
 
     void InitializeRange()
@@ -101,6 +102,7 @@ public class ShootingRange : MonoBehaviour
     void OnDestroy()
     {
         Enemy.Damaged -= OnDamaged;
+        DisposeTrainingFormation();
         if (Instance == this) Instance = null;
         if (rulerRoot != null) Destroy(rulerRoot.gameObject);
         if (canvas != null) Destroy(canvas.gameObject);

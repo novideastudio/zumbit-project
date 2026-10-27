@@ -43,6 +43,16 @@ public class SurvivorAbilities : MonoBehaviour
         if (turretWeapon != null) Destroy(turretWeapon);
     }
 
+    GameObject trainingThrownGrenade;
+    public void CleanupTrainingObjects()
+    {
+        if (!GameSession.IsRange) return;
+        StopAllCoroutines();
+        if (trainingThrownGrenade != null) Destroy(trainingThrownGrenade);
+        if (turretHero != null) { turretHero.gameObject.SetActive(false); Destroy(turretHero.gameObject); }
+        grenadeInFlight = false;
+    }
+
     float GrenadeCooldown => GrenadeBaseCooldown * (1f - Mathf.Clamp(bonuses.abilityCooldownReduction, 0f, 0.6f));
 
     void Update()
@@ -102,6 +112,7 @@ public class SurvivorAbilities : MonoBehaviour
         end.z = start.z;
 
         GameObject grenade = new GameObject("Grenade_Thrown");
+        if (GameSession.IsRange) trainingThrownGrenade = grenade;
         grenade.transform.position = start;
         var renderer = grenade.AddComponent<SpriteRenderer>();
         renderer.sprite = MakeGrenadeSprite();

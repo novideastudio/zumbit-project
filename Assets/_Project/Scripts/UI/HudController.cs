@@ -152,6 +152,7 @@ public class HudController : MonoBehaviour
         BuildWavePlate();
         BuildAccountPlate();
         BuildShockPlate();
+        if (GameSession.IsRange && shockPlate != null) { shockPlate.anchorMin = shockPlate.anchorMax = new Vector2(1f, 0f); shockPlate.pivot = new Vector2(1f, 0f); shockPlate.anchoredPosition = new Vector2(-16f, 230f); }
         BuildSquadCards();
         BuildLowHpWarning();
         // A mochila (InventoryPanel) e os banners da cena continuam POR CIMA das placas novas.
@@ -328,6 +329,7 @@ public class HudController : MonoBehaviour
     {
         foreach (var c in cards) if (c.root) Destroy(c.root.gameObject);
         cards.Clear();
+        if (GameSession.IsRange) { builtSquadCount = Mathf.Max(1, HeroSquad.Count); return; }
 
         var members = new List<(PlayerStats ps, SurvivorDef def)>();
         if (HeroSquad.Count > 0) foreach (var m in HeroSquad.Members) members.Add((m.stats, m.def));
