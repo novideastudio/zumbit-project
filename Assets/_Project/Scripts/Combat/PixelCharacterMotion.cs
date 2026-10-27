@@ -79,6 +79,25 @@ public sealed class PixelCharacterMotion : MonoBehaviour
     public void SetMoving(bool value) { moving = value; }
     public void Recoil() { recoil = 0.11f; }
 
+    /// <summary>
+    /// Volta ao estado de "recem-criado" para reaproveitar o zumbi do pool (EnemyFactory).
+    /// Chame DEPOIS de definir escala e tint, e antes de ativar o objeto.
+    /// </summary>
+    public void ResetForReuse()
+    {
+        if (sr == null) sr = GetComponent<SpriteRenderer>();
+        dead = false;
+        deathTime = 0f;
+        flash = 0f;
+        recoil = 0f;
+        glowAge = -1f;
+        lastHealth = -1f;
+        lastBob = 0f;
+        moving = false;
+        baseScale = transform.localScale;
+        if (sr != null) sr.color = tint;
+    }
+
     /// <summary>Pulsa o sprite na cor dada (2 batidas que se apagam) e volta ao tint normal.</summary>
     public void LevelGlow(Color color, float duration = 1.25f)
     {

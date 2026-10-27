@@ -56,6 +56,9 @@ public static class EnemyRoster
     {
         if (string.IsNullOrEmpty(theme)) return new Roster();
 
+        // Um roster novo = entradas novas: os zumbis guardados no pool do roster anterior nao servem mais.
+        EnemyFactory.ClearPools();
+
         var assets = Resources.LoadAll<EnemyData>("Config/Enemies/" + theme);
         if (assets.Length > 0)
         {
@@ -105,6 +108,14 @@ public static class EnemyRoster
     {
         float hp = 1f, spd = 1f, dmg = 1f;
         string l = n.ToLower();
+        // Tipo de comportamento definido AQUI, de forma explicita (mesma prioridade do Enemy: cuspidor > corredor > tanque).
+        EnemyKind kind = EnemyKind.Walker;
+        if (l.Contains("vomitador") || l.Contains("tóxica") || l.Contains("atirador") || l.Contains("sniper") ||
+            l.Contains("lança") || l.Contains("granadeiro")) kind = EnemyKind.Spitter;
+        else if (l.Contains("cão") || l.Contains("corredor") || l.Contains("motoqueiro")) kind = EnemyKind.Runner;
+        else if (l.Contains("gordo") || l.Contains("brutamonte") || l.Contains("demolidor") ||
+                 l.Contains("blindado") || l.Contains("swat") || l.Contains("experimento militar")) kind = EnemyKind.Tank;
+
         if (l.Contains("cão") || l.Contains("corredor") || l.Contains("motoqueiro")) { hp = 0.7f; spd = 1.9f; }
         else if (l.Contains("gordo") || l.Contains("brutamonte") || l.Contains("demolidor") ||
                  l.Contains("blindado") || l.Contains("swat") || l.Contains("experimento militar"))
@@ -112,6 +123,7 @@ public static class EnemyRoster
 
         var d = ScriptableObject.CreateInstance<EnemyData>();
         d.displayName = n; d.tier = t; d.theme = theme; d.sprite = sp; d.sizeMult = 1f;
+        d.kind = t == Tier.Boss ? EnemyKind.Walker : kind;
         switch (t)
         {
             case Tier.Common:
@@ -134,6 +146,46 @@ public static class EnemyFactory
     // visivel, nao importa o tamanho em pixels do PNG (antes a escala era fixa por pixel e a arte da escola,
     // com mais pixels, ficava ~40% maior que as outras).
     // Valores padrao em GameTuning (Resources/Config/GameTuning.asset), ajustaveis no Inspector.
+
+    // ---- Pool de zumbis: comuns e elites voltam para ca em vez de serem destruidos (chefes nao). ----
+    static readonly Dictionary<EnemyEntry, Stack<Enemy>> pools = new Dictionary<EnemyEntry, Stack<Enemy>>();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() => pools.Clear();
+
+    /// <summary>Destroi os zumbis parados no pool. Chamado quando um roster novo e carregado (nova missao).</summary>
+    public static void ClearPools()
+    {
+        foreach (var kv in pools)
+            while (kv.Value.Count > 0)
+            {
+                var en = kv.Value.Pop();
+                if (en != null) Object.Destroy(en.gameObject);
+            }
+        pools.Clear();
+    }
+
+    /// <summary>Devolve um zumbi morto ao pool (chamado pelo proprio Enemy depois do tempo do corpo).</summary>
+    public static void Release(Enemy en)
+    {
+        if (en == null) return;
+        var entry = en.poolEntry;
+        en.gameObject.SetActive(false);
+        if (entry == null) { Object.Destroy(en.gameObject); return; }
+        if (!pools.TryGetValue(entry, out var stack)) pools[entry] = stack = new Stack<Enemy>(16);
+        stack.Push(en);
+    }
+
+    static Enemy TakeFromPool(EnemyEntry e)
+    {
+        if (!pools.TryGetValue(e, out var stack)) return null;
+        while (stack.Count > 0)
+        {
+            var en = stack.Pop();
+            if (en != null) return en;   // ignora os destruidos por troca de cena
+        }
+        return null;
+    }
 
     public static float TargetHeight(EnemyEntry e)
     {
@@ -183,10 +235,32 @@ public static class EnemyFactory
 
     public static Enemy Spawn(EnemyEntry e, Vector3 pos, Transform target, EliteMod mod = EliteMod.None)
     {
+        float s = ComputeScale(e);
+        bool poolable = e.tier != Tier.Boss;   // chefe tem barra de vida propria e aparece uma vez: nao entra no pool
+
+        // ---- reaproveita um zumbi do pool ----
+        var pooled = poolable ? TakeFromPool(e) : null;
+        if (pooled != null)
+        {
+            var pgo = pooled.gameObject;   // esta desativado
+            pgo.transform.position = pos;
+            pgo.transform.localScale = new Vector3(s, s, 1f);
+            pooled.ResetForReuse();
+            pooled.target = target;
+            pooled.mod = mod;
+            pooled.stopDistance = 1.1f;
+            var pmotion = pgo.GetComponent<PixelCharacterMotion>();
+            pmotion.tint = ModTint(mod);
+            pmotion.ResetForReuse();
+            pgo.SetActive(true);   // OnEnable: registra na lista, recalcula vida e dano recebido
+            AlignSpriteFeetToGround(pgo.transform, pos.y);
+            return pooled;
+        }
+
+        // ---- cria um novo ----
         var go = new GameObject(e.name);
         go.SetActive(false);
         go.transform.position = pos;
-        float s = ComputeScale(e);
         go.transform.localScale = new Vector3(s, s, 1f);
 
         var sr = go.AddComponent<SpriteRenderer>();
@@ -197,6 +271,7 @@ public static class EnemyFactory
         en.target = target;
         en.mod = mod;
         en.stopDistance = e.tier == Tier.Boss ? 1.8f : 1.1f;
+        if (poolable) en.poolEntry = e;
         go.AddComponent<YSort>();
         var motion = go.AddComponent<PixelCharacterMotion>();
         motion.isEnemy = true;

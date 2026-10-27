@@ -48,6 +48,8 @@ public sealed class FloatingDamageText : MonoBehaviour
     float shakeSeed;
     Vector3 basePos;
     bool inUse;
+    // Ultimo alpha escrito nos TMP: cada escrita de cor marca a malha como "suja" (2 TMP por numero, ate 32 numeros).
+    float lastAlpha = 1f;
 
     // ------------------------------------------------------------------ API
     public static void Show(Vector3 worldPosition, float damage, bool critical = false)
@@ -130,6 +132,7 @@ public sealed class FloatingDamageText : MonoBehaviour
     {
         kind = k;
         age = 0f;
+        lastAlpha = 1f;
         shakeSeed = Random.value * 100f;
 
         string txt;
@@ -217,14 +220,19 @@ public sealed class FloatingDamageText : MonoBehaviour
         float fadeScale = Mathf.Lerp(1f, kind == Kind.Miss ? 0.85f : 0.72f, Mathf.SmoothStep(0.55f, 1f, t));
         transform.localScale = Vector3.one * (pop * fadeScale);
 
+        // Cores so sao reescritas quando o alpha realmente muda (na primeira metade da vida ele fica em 1).
         float alpha = 1f - Mathf.SmoothStep(0.5f, 1f, t);
-        var fc = label.color; fc.a = alpha; label.color = fc;
-        var sc = ShadowColor; sc.a = ShadowColor.a * alpha; shadow.color = sc;
-        if (kind == Kind.Crit)
+        if (Mathf.Abs(alpha - lastAlpha) > 0.004f)
         {
-            label.colorGradient = new VertexGradient(
-                new Color(CritTop.r, CritTop.g, CritTop.b, alpha), new Color(CritTop.r, CritTop.g, CritTop.b, alpha),
-                new Color(CritBottom.r, CritBottom.g, CritBottom.b, alpha), new Color(CritBottom.r, CritBottom.g, CritBottom.b, alpha));
+            lastAlpha = alpha;
+            var fc = label.color; fc.a = alpha; label.color = fc;
+            var sc = ShadowColor; sc.a = ShadowColor.a * alpha; shadow.color = sc;
+            if (kind == Kind.Crit)
+            {
+                label.colorGradient = new VertexGradient(
+                    new Color(CritTop.r, CritTop.g, CritTop.b, alpha), new Color(CritTop.r, CritTop.g, CritTop.b, alpha),
+                    new Color(CritBottom.r, CritBottom.g, CritBottom.b, alpha), new Color(CritBottom.r, CritBottom.g, CritBottom.b, alpha));
+            }
         }
 
         if (age >= duration) Release();

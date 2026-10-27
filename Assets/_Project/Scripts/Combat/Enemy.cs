@@ -34,6 +34,7 @@ public class Enemy : MonoBehaviour
     public const float ExplosionRadius = 2.4f;
     public const float ExplosionDamageMult = 3f;     // x dano do zumbi
     public const float EnrageThreshold = 0.5f;
+    const float CorpseSeconds = 0.35f;               // tempo do corpo em cena antes de sumir / voltar ao pool
 
     // ---- Fila da horda (o heroi fica parado, os zumbis se enfileiram dos dois lados) ----
     /// <summary>Distancia X entre zumbis enfileirados.</summary>
@@ -44,6 +45,8 @@ public class Enemy : MonoBehaviour
     public EnemyData data;
     /// <summary>Boneco do estande: nao anda, nao ataca, nao morre de verdade (veja TrainingDummy).</summary>
     [HideInInspector] public bool isTrainingDummy;
+    /// <summary>Definido pela EnemyFactory quando o zumbi vem do pool: ao morrer ele volta ao pool em vez de ser destruido.</summary>
+    [HideInInspector] public EnemyEntry poolEntry;
     public Transform target;
     public float stopDistance = 0.8f;
     [Tooltip("Definido pelo spawner antes de ativar o objeto.")] public EliteMod mod = EliteMod.None;
@@ -160,6 +163,28 @@ public class Enemy : MonoBehaviour
             hp.Init(data.maxHealth * mult);
         }
         RefreshAim();
+    }
+
+    /// <summary>
+    /// Zera o estado dinamico para reaproveitar este zumbi do pool. Chame com o objeto DESATIVADO,
+    /// antes de definir target/mod e de ativar (o OnEnable recalcula vida e dano recebido).
+    /// </summary>
+    public void ResetForReuse()
+    {
+        dead = false;
+        enraged = false;
+        speedBoost = 1f; damageBoost = 1f; intervalMult = 1f;
+        stunUntil = 0f;
+        damageTakenMult = 1f;
+        kindOverride = EnemyKind.Auto;
+        kind = EnemyKind.Walker;
+        kindReady = false;
+        targetHealth = null;
+        nextAttack = 0f;
+        distToTarget = 0f; slotDistance = 0f; queueRank = 0;
+        if (ySort == null) ySort = GetComponent<YSort>();
+        if (ySort != null) ySort.sortBias = 0;
+        if (motion == null) motion = GetComponent<PixelCharacterMotion>();
     }
 
     void OnHealthChanged(float current, float max)
@@ -402,9 +427,12 @@ public class Enemy : MonoBehaviour
         PixelCombatVFX.Death(feet, boss);
         ZombitAudio.PlayZombieDeath(transform.position, boss);
 
-        // PixelCharacterMotion anima a queda/fade em ~0.28 s; o objeto some logo depois.
-        Destroy(gameObject, 0.35f);
+        // PixelCharacterMotion anima a queda/fade em ~0.28 s; depois o zumbi volta ao pool (ou e destruido, se nao veio do pool).
+        if (poolEntry != null) Invoke(nameof(ReturnToPool), CorpseSeconds);
+        else Destroy(gameObject, CorpseSeconds);
     }
+
+    void ReturnToPool() => EnemyFactory.Release(this);
 
     /// <summary>Explode ao morrer: fere TODOS os sobreviventes proximos (dupla/trio inclusive). Matar de longe evita o dano.</summary>
     void ExplodeOnDeath(Vector3 feet)
