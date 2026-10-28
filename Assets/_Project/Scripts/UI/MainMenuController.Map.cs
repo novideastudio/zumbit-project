@@ -38,19 +38,20 @@ public partial class MainMenuController
         // Removido: BuildHubChapterSelector(s, save);
 
         // ---- mapa ----
-        var mapArea = UIKit.Frame(s, "MapArea", new Color(0.018f, 0.026f, 0.031f, 1f), UIKit.Col.Border, 2f);
-        UIFactory.Stretch(mapArea, 0.09f, 0.225f, 0.70f, 0.885f);
+        var mapArea = UIKit.Frame(s, "MapArea", new Color(0f, 0f, 0f, 0f), new Color(0f, 0f, 0f, 0f), 0f);
+        // Mapa panorâmico ocupa os 70% esquerdos da tela; o painel de missão sobrepõe a direita.
+        UIFactory.Stretch(mapArea, 0f, 0f, 0.70f, 1f);
         var mapInner = UIFactory.Node("MapInner", mapArea);
         UIFactory.Inset(UIFactory.Stretch(mapInner), 2f, 2f);
         mapInner.gameObject.AddComponent<RectMask2D>();
 
         var mapArt = UIFactory.Img(mapInner, Color.white, "CityMapArt");
-        mapArt.sprite = ArtLoader.Get("Art/Map/campaign_map");
+        mapArt.sprite = ArtLoader.Get("Art/Map/city_map");
         mapArt.preserveAspect = false;
         UIFactory.Stretch(mapArt.rectTransform);
         mapArt.raycastTarget = false;
         mapArt.color = Color.white;
-        var mapShade = UIFactory.Img(mapInner, new Color(0.008f, 0.016f, 0.022f, 0.035f), "CityMapShade");
+        var mapShade = UIFactory.Img(mapInner, new Color(0.008f, 0.016f, 0.022f, 0.055f), "CityMapShade");
         UIFactory.Stretch(mapShade.rectTransform);
         mapShade.raycastTarget = false;
 
@@ -352,13 +353,13 @@ public partial class MainMenuController
 
         string lvlColor = lvl >= loc.recommendedLevel ? "#6CFF8A" : lvl >= loc.recommendedLevel - 2 ? "#FFD84A" : "#FF5555";
         const string dim = "#9AA6B2";
-        if (hubBadge) hubBadge.text = (GameDatabase.Locations.IndexOf(loc) + 1).ToString("00");
-        if (dName) dName.text = loc.name.ToUpperInvariant();
+        if (hubBadge) hubBadge.text = MapDisplayNumber(loc).ToString("00");
+        if (dName) dName.text = MapDisplayName(loc);
         if (dDesc) dDesc.text = loc.description;
-        if (hubStatA) hubStatA.text = $"<color={dim}>Nível recomendado:</color> <b><color={lvlColor}>{loc.recommendedLevel}</color></b>";
-        if (hubStatB) hubStatB.text = $"<color={dim}>Ondas:</color> <b>{loc.waves}</b>";
+        if (hubStatA) hubStatA.text = $"<size=72%><color={dim}>NÍVEL RECOMENDADO</color></size>\n<size=150%><b><color={lvlColor}>{loc.recommendedLevel}</color></b></size>";
+        if (hubStatB) hubStatB.text = $"<size=72%><color={dim}>ONDAS</color></size>\n<size=150%><b>{loc.waves}</b></size>";
         if (hubStatC) hubStatC.text = $"<color={dim}>Dificuldade:</color> <b><color=#FFD84A>{LocationDef.DifficultyName(loc.difficulty)}</color></b> ({loc.difficulty}/5)";
-        if (hubStatD) hubStatD.text = $"<color={dim}>Recompensa:</color> <b><color=#FFC24B>{loc.goldReward}</color></b> ouro";
+        if (hubStatD) hubStatD.text = $"<size=72%><color={dim}>RECOMPENSA</color></size>\n<size=145%><b><color=#FFC24B>● {loc.goldReward}</color></b></size>";
 
         string note = "";
         if (!unlocked) note = "<color=#FF8888>Bloqueado: conclua " + RequirementNames(loc) + ".</color>";
@@ -368,7 +369,8 @@ public partial class MainMenuController
 
         if (selectedLocationPreview)
         {
-            Sprite hero = ArtLoader.Get(SceneBackgrounds.PathFor(loc));
+            Sprite hero = ArtLoader.Get("Art/Map/Locations/" + loc.id);
+            if (hero == null) hero = ArtLoader.Get(SceneBackgrounds.PathFor(loc));
             selectedLocationPreview.sprite = hero;
             selectedLocationPreview.color = hero == null ? new Color(0.12f, 0.16f, 0.18f, 1f)
                 : unlocked ? Color.white : new Color(0.42f, 0.45f, 0.48f, 1f);

@@ -154,7 +154,7 @@ public partial class MainMenuController
         UIFactory.Stretch(panel, MPanelL, 0.02f, 0.995f, MTopY - 0.01f);
 
         var titleRow = HubRow(panel, "TitleBar", 6f, 54f, 6f);
-        var titleBg = UIFactory.Img(titleRow, new Color(0.46f, 0.06f, 0.08f, 1f), "TitleBg");
+        var titleBg = UIFactory.Img(titleRow, new Color(0.018f, 0.025f, 0.032f, 0.98f), "TitleBg");
         UIFactory.Stretch(titleBg.rectTransform);
         titleBg.raycastTarget = false;
         var badge = UIKit.Frame(titleRow, "NumBadge", new Color(0.12f, 0.07f, 0.04f, 1f), UIKit.Col.Gold, 2f);
@@ -165,7 +165,7 @@ public partial class MainMenuController
         dName = UIFactory.Txt(titleRow, "", 30, TextAlignmentOptions.MidlineLeft, Color.white, "DName");
         UIFactory.Stretch(dName.rectTransform);
         dName.rectTransform.offsetMin = new Vector2(68f, 0f);
-        dName.rectTransform.offsetMax = new Vector2(-8f, 0f);
+        dName.rectTransform.offsetMax = new Vector2(-66f, 0f);
         dName.fontStyle = FontStyles.Bold;
         dName.textWrappingMode = TextWrappingModes.NoWrap;
         dName.enableAutoSizing = true; dName.fontSizeMin = 18f; dName.fontSizeMax = 30f;

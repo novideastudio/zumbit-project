@@ -18,7 +18,8 @@ public partial class MainMenuController
         if(content == null) { Debug.LogWarning("Zombit: MissionContent ausente; botao de formacao nao instalado."); return; }
         var b=UIFactory.Btn(content,"ESCOLHER FORMAÇÃO",20,OpenMissionFormation,null,"MissionFormationButton");
         var le=b.gameObject.AddComponent<LayoutElement>();le.preferredHeight=60f;
-        b.transform.SetAsFirstSibling();
+        // Mantém a seleção de equipe disponível sem interromper a hierarquia visual do painel de missão.
+        b.transform.SetAsLastSibling();
     }
     void CloseMissionFormation()
     {
