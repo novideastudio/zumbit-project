@@ -79,8 +79,9 @@ public partial class MainMenuController
 
         SkBuildDetail(s, survivor, nodes, progress, branchAccents);
         SkBuildLegend(s);
-        UILayoutPrefabApplier.Apply(s, "mapSkills");
+        // Six-rank screen owns its geometry; do not apply legacy three-node layout.
         Show("mapSkills");
+        FixSkillScreenPresentation(s);
     }
 
     // ---------- cabecalho ----------
@@ -422,7 +423,7 @@ public partial class MainMenuController
             var row = UIFactory.Img(panel, owned ? new Color(0.05f, 0.16f, 0.11f, 0.9f) : next ? new Color(0.14f, 0.10f, 0.03f, 0.9f) : new Color(0.04f, 0.055f, 0.065f, 0.9f), "RankRow_" + r);
             UIFactory.Place(row.rectTransform, new Vector2(0f, 1f), new Vector2(16f, -y), new Vector2(inner, 30f));
             row.raycastTarget = false;
-            MapText(panel, (owned ? "✔ " : next ? "▶ " : "· ") + SkillTreeSystem.RankName(r).ToUpperInvariant(), 16, TextAlignmentOptions.MidlineLeft, c, 24, y, 190, 30, "RankName_" + r).fontStyle = FontStyles.Bold;
+            MapText(panel, (owned ? "+ " : next ? "> " : "· ") + SkillTreeSystem.RankName(r).ToUpperInvariant(), 16, TextAlignmentOptions.MidlineLeft, c, 24, y, 190, 30, "RankName_" + r).fontStyle = FontStyles.Bold;
             string total = SkillTreeSystem.LineFor(node.stat, node.bonuses.Get(node.stat) * r);
             var tv = MapText(panel, total, 15, TextAlignmentOptions.MidlineLeft, c, 218, y, 230, 30, "RankBonus_" + r);
             SkFit(tv, 10f);
@@ -629,8 +630,8 @@ public partial class MainMenuController
             case SkillStat.AbilityPower: return survivorId == "engineer" ? "chip" : "grenade";
             case SkillStat.TurretFireRate: return "gear";
             case SkillStat.Cooldown: return "clock";
-            case SkillStat.Healing: return "medcross";
-            case SkillStat.GrenadeRadius: return "explosion";
+            case SkillStat.Healing: return "medcrate";
+            case SkillStat.GrenadeRadius: return "explosive";
             default: return "star_up";
         }
     }

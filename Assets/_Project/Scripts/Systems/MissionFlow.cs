@@ -7,7 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-public class MissionFlow : MonoBehaviour
+public partial class MissionFlow : MonoBehaviour
 {
     public PlayerStats stats;
     /// <summary>Sobreviventes de apoio: vazio (solo), 1 (dupla) ou 2 (trio, so no Pesadelo).</summary>
@@ -81,6 +81,7 @@ public class MissionFlow : MonoBehaviour
     /// </summary>
     public void AbandonToMap()
     {
+        if (GameSession.IsRange) { ExitTrainingToMap(); return; }
         if (done) return;
         done = true;
 
@@ -180,6 +181,8 @@ public class MissionFlow : MonoBehaviour
 
     void Finish(bool win)
     {
+        // Training events must never run campaign rewards or penalties.
+        if (GameSession.IsRange) return;
         if (done) return;
         done = true;
 
