@@ -219,71 +219,17 @@ public partial class MainMenuController
 
     void BuildSelect()
     {
-        var editorScreen = EditorUiScreen("select");
-        if (editorScreen != null) { BindSelectFromPrefab(editorScreen); return; }
-
-        var s = NewScreen("select");
-        AddCinematicBackground(s, 0.72f);
-        var selectPanel = UIKit.Frame(s, "SurvivorSelectPanel", new Color(0.014f, 0.026f, 0.036f, 0.9f), UIKit.Col.Border, 2f);
-        UIFactory.Stretch(selectPanel, 0.015f, 0.05f, 0.985f, 0.95f);
-        Title(s, "ESCOLHER <color=#D8242B>SOBREVIVENTE</color>", 56);
-        playerIdentityInSelect = UIFactory.Txt(s, "JOGADOR: " + GetPendingNickname("JOGADOR") + "  ·  ESCOLHA SUA CLASSE", 20,
-            TextAlignmentOptions.Center, UIKit.Col.Gold, "NewGamePlayerIdentity");
-        UIFactory.Place(playerIdentityInSelect.rectTransform, TopC, new Vector2(0, -104), new Vector2(1120, 30));
-        playerIdentityInSelect.textWrappingMode = TextWrappingModes.NoWrap;
-
-        const float cardW = 340f, cardH = 770f, gap = 14f;
-        var cards = UIFactory.Node("Cards", s);
-        UIFactory.Place(cards, TopC, new Vector2(0, -144), new Vector2(cardW * 5 + gap * 4, cardH));
-        UIFactory.HLayout(cards, gap, TextAnchor.UpperCenter);
-
-        cardBtns.Clear(); cardImgs.Clear(); cardFills.Clear();
-        if (!editorUiBaking)
-            foreach (var def in GameDatabase.Survivors) BuildSurvivorCardCode(cards, def);
-
-        selNote = UIFactory.Txt(s, "", UIKit.Size.Body, TextAlignmentOptions.Center, UIKit.Col.TextDim, "Note");
-        UIFactory.Place(selNote.rectTransform, BotC, new Vector2(0, 100), new Vector2(1400, 34));
-
-        var back = UIKit.Button(s, "VOLTAR", () => { if (newGameMode) Show("main"); else ShowHome(); },
-            UIKit.BtnStyle.Secondary, 26, "BackButton");
-        UIFactory.Place((RectTransform)back.transform, BotC, new Vector2(-300, 20), new Vector2(360, 70));
-        var confirm = UIKit.Button(s, "INICIAR CAMPANHA", OnConfirmSurvivor, UIKit.BtnStyle.Primary, 26, "ConfirmButton");
-        UIFactory.Place((RectTransform)confirm.transform, BotC, new Vector2(250, 20), new Vector2(520, 70));
-        confirmLabel = confirm.GetComponentInChildren<TMP_Text>();
+        BuildPcSurvivorSelect();
     }
 
     void ShowSelect()
     {
-        if (!newGameMode && GameSession.Save != null)
-            selected = GameDatabase.GetSurvivor(GameSession.Save.selectedSurvivor);
-        confirmLabel.text = newGameMode ? "INICIAR CAMPANHA" : "CONFIRMAR SOBREVIVENTE";
-        if (playerIdentityInSelect)
-        {
-            string nick = newGameMode ? GetPendingNickname("JOGADOR") : GetPlayerNickname(GameSession.Save);
-            playerIdentityInSelect.text = "JOGADOR: " + nick.ToUpperInvariant() + "  ·  ESCOLHA SUA CLASSE";
-        }
-        selNote.text = newGameMode && SaveSystem.FirstEmptySlot() < 0
-            ? "Todos os slots estão cheios: o Slot 1 será sobrescrito."
-            : (newGameMode ? "O progresso será salvo automaticamente." : "Cada sobrevivente tem seu próprio nível.");
-        RefreshSurvivorLevelChips();
-        SelectSurvivor(selected);
-        Show("select");
+        ShowPcSurvivorSelect();
     }
 
     void SelectSurvivor(SurvivorDef d)
     {
-        selected = d;
-        for (int i = 0; i < GameDatabase.Survivors.Count && i < cardBtns.Count; i++)
-        {
-            var def = GameDatabase.Survivors[i];
-            bool on = def == d;
-            Color cc = new Color(def.color.r, def.color.g, def.color.b, 1f);
-            Color border = on ? Color.Lerp(cc, Color.white, 0.35f) : Color.Lerp(cc, UIKit.Col.Border, 0.55f);
-            Color fill = Color.Lerp(UIKit.Col.Surface, cc, on ? 0.30f : 0.12f);
-            UIFactory.SetButtonColor(cardBtns[i], border);
-            if (i < cardFills.Count && cardFills[i]) cardFills[i].color = fill;
-            cardBtns[i].transform.localScale = on ? new Vector3(1.025f, 1.025f, 1f) : Vector3.one;
-        }
+        SelectPcSurvivor(d);
     }
 
     void OnConfirmSurvivor()

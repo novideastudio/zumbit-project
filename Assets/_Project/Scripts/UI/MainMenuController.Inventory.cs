@@ -98,40 +98,7 @@ public partial class MainMenuController
         }
         mapInventorySelectedUid = selectedItem != null ? selectedItem.uid : null;
 
-        var s = Rebuild("mapInventory");
-        CreateUtilityBackdrop(s, "MapInventoryBackdrop");
-        CreateUtilityHeader(s, "INVENTÁRIO TÁTICO",
-            "OURO  " + save.gold.ToString("N0") + "    ·    SUCATA  " + save.scrap.ToString("N0"), NavTab.Bag);
-
-        // Area util = tudo abaixo do cabecalho (que ocupa 8,5% do topo).
-        var content = UIFactory.Node("InventoryContent", s);
-        InvAnchor(content, 0f, 0f, 1f, 0.915f, 20f, 14f, -20f, -12f);
-
-        // Coluna direita: detalhes (largura fixa, altura total).
-        var detailsPanel = UIKit.Panel(content, "MapItemDetailsPanel", "Detalhes do item");
-        InvAnchor(detailsPanel, 1f, 0f, 1f, 1f, -InvDetailsW, 0f, 0f, 0f);
-
-        // Coluna esquerda: linha de cima (equipamento + atributos) e mochila embaixo.
-        var left = UIFactory.Node("InventoryLeft", content);
-        InvAnchor(left, 0f, 0f, 1f, 1f, 0f, 0f, -(InvDetailsW + InvGap), 0f);
-
-        var topRow = UIFactory.Node("InventoryTopRow", left);
-        InvAnchor(topRow, 0f, 1f, 1f, 1f, 0f, -InvTopH, 0f, 0f);
-
-        var equipmentPanel = UIKit.Panel(topRow, "MapEquipmentPanel", "Equipamento do sobrevivente");
-        InvAnchor(equipmentPanel, 0f, 0f, 0f, 1f, 0f, 0f, InvEquipW, 0f);
-
-        var statsPanel = UIKit.Panel(topRow, "MapStatsPanel", "Atributos do sobrevivente");
-        InvAnchor(statsPanel, 0f, 0f, 1f, 1f, InvEquipW + InvGap, 0f, 0f, 0f);
-
-        var backpackPanel = UIKit.Panel(left, "MapBackpackPanel", "Mochila de campo");
-        InvAnchor(backpackPanel, 0f, 0f, 1f, 1f, 0f, 0f, 0f, -(InvTopH + InvGap));
-
-        BuildMapEquipmentPanel(equipmentPanel, save, mapInventorySelectedUid);
-        BuildMapStatsPanel(statsPanel, save);
-        BuildMapBackpackPanel(backpackPanel, save, visibleBag, mapInventorySelectedUid);
-        BuildMapItemDetails(detailsPanel, selectedItem, selectedEquipped, save);
-        Show("mapInventory");
+        BuildPcInventoryScreen(save, visibleBag, selectedItem, selectedEquipped);
     }
 
     // ---------- mochila: filtro por categoria + ordenacao ----------
@@ -283,7 +250,7 @@ public partial class MainMenuController
         System.Action onClick, string name)
     {
         Color rc = item != null ? RarityColors.Get(item.rarity) : UIKit.Col.Border;
-        Color border = selected ? UIKit.Col.Accent
+        Color border = selected ? UIKit.Col.Gold
             : item != null ? Color.Lerp(rc, UIKit.Col.Border, 0.3f) : UIKit.Col.Border;
         border.a = 1f;
         var b = UIKit.Button(parent, "", onClick, UIKit.BtnStyle.Secondary, 10, name);
@@ -343,49 +310,7 @@ public partial class MainMenuController
     //   MELHORIA | BOTAS
     void BuildMapEquipmentPanel(RectTransform panel, SaveData save, string selectedUid)
     {
-        const float slotSize = 72f;
-        const float margin = 24f;
-        float rightX = InvEquipW - margin - slotSize;
-        float mannequinX = margin + slotSize + 12f;
-        float mannequinW = InvEquipW - mannequinX * 2f;
-
-        // Fundo do manequim (entre as duas colunas de slots).
-        var glow = UIFactory.Img(panel, new Color(0.06f, 0.10f, 0.12f, 1f), "MannequinBackdrop");
-        UIKit.ApplyChamfer(glow, glow.color);
-        UIFactory.Place(glow.rectTransform, TL, new Vector2(mannequinX, -62f), new Vector2(mannequinW, 288f));
-        glow.raycastTarget = false;
-
-        var mannequinNode = UIFactory.Node("EquipmentMannequin", panel);
-        UIFactory.Place(mannequinNode, TL, new Vector2(mannequinX + 6f, -68f), new Vector2(mannequinW - 12f, 276f));
-        Image mannequin = mannequinNode.gameObject.AddComponent<Image>();
-        // Boneco frontal generico (os sprites *_full sao poses de tiro, largas demais para o manequim).
-        mannequin.sprite = InventoryMannequin.Get(GameDatabase.GetSurvivor(invSurvivorId));
-        if (mannequin.sprite == null) mannequin.sprite = SurvivorPortraitSprite(GameDatabase.GetSurvivor(invSurvivorId));
-        mannequin.preserveAspect = true;
-        mannequin.raycastTarget = false;
-        mannequin.color = mannequin.sprite != null ? Color.white : new Color(0.55f, 0.61f, 0.64f, 1f);
-
-        float row0 = 62f, row1 = 160f, row2 = 258f;   // y do rotulo de cada linha (slot fica 19px abaixo)
-        CreateMapEquipmentSlot(panel, save, ItemSlot.Capacete, "CAPACETE", margin, row0, slotSize, selectedUid);
-        CreateMapEquipmentSlot(panel, save, ItemSlot.Colete, "COLETE", rightX, row0, slotSize, selectedUid);
-        CreateMapEquipmentSlot(panel, save, ItemSlot.Mochila, "MOCHILA", margin, row1, slotSize, selectedUid);
-        CreateMapEquipmentSlot(panel, save, ItemSlot.Calca, "CALÇAS", rightX, row1, slotSize, selectedUid);
-        CreateMapEquipmentSlot(panel, save, ItemSlot.Arma, "MELHORIA", margin, row2, slotSize, selectedUid);
-        CreateMapEquipmentSlot(panel, save, ItemSlot.Botas, "BOTAS", rightX, row2, slotSize, selectedUid);
-
-        // Faixa de retratos na base: clique para trocar de sobrevivente.
-        var sep = UIFactory.Img(panel, UIKit.Col.Border, "SurvivorStripSeparator");
-        InvAnchor(sep.rectTransform, 0f, 0f, 1f, 0f, 14f, 90f, -14f, 91f);
-        sep.raycastTarget = false;
-
-        var strip = UIFactory.Node("SurvivorStrip", panel);
-        InvAnchor(strip, 0f, 0f, 1f, 0f, 14f, 6f, -14f, 84f);
-        var h = UIFactory.HLayout(strip, 8f, TextAnchor.MiddleCenter);
-        h.childForceExpandWidth = false;
-        h.childForceExpandHeight = false;
-        int survivorCount = Mathf.Max(1, GameDatabase.Survivors.Count);
-        float chipW = Mathf.Floor(Mathf.Min(84f, ((InvEquipW - 28f) - 8f * (survivorCount - 1)) / survivorCount));
-        foreach (var def in GameDatabase.Survivors) BuildSurvivorChip(strip, def, save, chipW);
+        BuildPcEquipmentPanel(panel, save, selectedUid);
     }
 
     void CreateMapEquipmentSlot(RectTransform parent, SaveData save, ItemSlot slot, string label,

@@ -106,66 +106,7 @@ public partial class MainMenuController
     // ---------- tela ----------
     void ShowHome()
     {
-        var save = GameSession.Save;
-        if (save == null) { Show("main"); return; }
-        save.MigrateFromPreviousVersions();
-        homeOrigin = false;
-        homeFocusId = null;
-        homeLastTapId = null;
-        homeSeatRects.Clear(); homePlates.Clear(); homePlateOutlines.Clear();
-        HomeSeatDrag.Calibrating = false;
-
-        var surv = GameDatabase.GetSurvivor(save.selectedSurvivor);
-        var s = Rebuild("home");
-
-        // Arte da fogueira ("cover") com brilho e brasas, igual ao menu principal.
-        Sprite art = ArtLoader.Get("Art/Home/camp_home");
-        homeArtRect = null;
-        if (art != null)
-        {
-            var artImg = UIFactory.Img(s, Color.white, "HomeArt");
-            artImg.sprite = art;
-            artImg.preserveAspect = false;
-            artImg.raycastTarget = false;
-            homeArtRect = artImg.rectTransform;
-            UIFactory.Stretch(homeArtRect);
-            var fit = artImg.gameObject.AddComponent<AspectRatioFitter>();
-            fit.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
-            fit.aspectRatio = art.rect.width / art.rect.height;
-            if (!editorUiBaking) { var ambience = MenuAmbience.Attach(homeArtRect); ambience.breathZoom = 0f; }
-        }
-        else AddCinematicBackground(s, 0.45f);
-
-        // Sombras no topo e na base para os botoes ficarem legiveis.
-        var topShade = UIFactory.Img(s, new Color(0.004f, 0.007f, 0.011f, 0.70f), "HomeTopShade");
-        UIFactory.Stretch(topShade.rectTransform, 0f, 0.86f, 1f, 1f);
-        topShade.raycastTarget = false;
-        var bottomShade = UIFactory.Img(s, new Color(0.004f, 0.007f, 0.011f, 0.78f), "HomeBottomShade");
-        UIFactory.Stretch(bottomShade.rectTransform, 0f, 0f, 1f, 0.22f);
-        bottomShade.raycastTarget = false;
-
-        if (homeArtRect != null)
-            foreach (var def in GameDatabase.Survivors) BuildHomeSeat(homeArtRect, def, save);
-
-        BuildHomeTopBar(s, save, surv);
-        BuildHomeLeftColumn(s);
-        BuildHomeBottomBar(s, save);
-        // Removido: BuildHomeNextMission(s, save);
-        BuildHomeCampaignButton(s, save);
-
-        // Aviso do modo calibrar (F9).
-        var notice = UIFactory.Txt(s, "MODO CALIBRAR (F9)  —  arraste cada sobrevivente para cima do personagem dele na arte",
-            22, TextAlignmentOptions.Center, new Color(1f, 0.9f, 0.3f), "CalibrateNotice");
-        UIFactory.Place(notice.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -120f), new Vector2(1400f, 40f));
-        notice.fontStyle = FontStyles.Bold;
-        notice.raycastTarget = false;
-        AddTextShadow(notice.gameObject);
-        notice.gameObject.SetActive(false);
-        var key = s.gameObject.AddComponent<HomeCalibrationKey>();
-        key.notice = notice.gameObject;
-
-        Show("home");
-        RefreshHomeSeatStyles();
+        ShowPcReferenceHome();
     }
 
     // ---------- barra superior ----------

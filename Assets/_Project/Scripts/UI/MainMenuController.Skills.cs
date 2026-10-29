@@ -82,6 +82,7 @@ public partial class MainMenuController
         // Six-rank screen owns its geometry; do not apply legacy three-node layout.
         Show("mapSkills");
         FixSkillScreenPresentation(s);
+        ApplyPcSkillTheme(s, survivor, progress, nodes, branchAccents);
     }
 
     // ---------- cabecalho ----------

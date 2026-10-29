@@ -25,6 +25,8 @@ public partial class MainMenuController
         nodeOutlines.Clear();
         nodePins.Clear();
         nodeBorders.Clear();
+        pcCampaignNodes.Clear();
+        pcCampaignPins.Clear();
 
         var s = Rebuild("map");
         var mapBackdrop = UIFactory.Img(s, new Color(0.012f, 0.018f, 0.023f, 1f), "MapBackdrop");
@@ -73,8 +75,8 @@ public partial class MainMenuController
         // (cabecalho da regiao sobre o mapa removido: agora vive no seletor de capitulo do topo)
 
         // ---- painel da missao (rolavel) + faixa da equipe ----
-        BuildHubMissionPanelMobile(s);
-        AddMissionFormationButton();
+        BuildPcCampaignPanel(s);
+        // Formation button is part of the new PC panel.
         BuildHubBottomMobile(s, save, surv, prog);
         var hiddenSquad = s.Find("HubSquadPanelM");
         if (hiddenSquad != null) hiddenSquad.gameObject.SetActive(false);
@@ -90,7 +92,7 @@ public partial class MainMenuController
         // continuam utilizando os prefabs editaveis normalmente.
         Show("map");
         SelectLocation(start);
-        SetupCleanCampaign(s, mapArea);
+        SetupPcCampaign(s, mapArea);
 
         // Aviso pendente (ex.: jogo fechado no meio de uma missao, abandono, derrota).
         if (!string.IsNullOrEmpty(save.pendingNotice))
@@ -306,7 +308,7 @@ public partial class MainMenuController
 
     void BuildNode(Transform parent, LocationDef loc, int index, SaveData save, int playerLevel)
     {
-        BuildExactMapNode(parent, loc, index, save);
+        BuildPcCampaignNode(parent, loc, index, save);
     }
 
 
