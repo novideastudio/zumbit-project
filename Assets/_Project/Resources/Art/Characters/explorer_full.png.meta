@@ -144,10 +144,10 @@ TextureImporter:
       name: explorer_full_0
       rect:
         serializedVersion: 2
-        x: 15
-        y: 15
-        width: 496
-        height: 533
+        x: 10
+        y: 9
+        width: 391
+        height: 457
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}

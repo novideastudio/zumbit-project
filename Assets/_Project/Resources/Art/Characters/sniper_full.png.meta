@@ -144,10 +144,10 @@ TextureImporter:
       name: sniper_full_0
       rect:
         serializedVersion: 2
-        x: 15
-        y: 15
-        width: 785
-        height: 475
+        x: 5
+        y: 0
+        width: 460
+        height: 477
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}

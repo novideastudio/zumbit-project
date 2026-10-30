@@ -144,10 +144,10 @@ TextureImporter:
       name: engineer_full_0
       rect:
         serializedVersion: 2
-        x: 15
-        y: 15
-        width: 616
-        height: 518
+        x: 0
+        y: 0
+        width: 401
+        height: 473
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
