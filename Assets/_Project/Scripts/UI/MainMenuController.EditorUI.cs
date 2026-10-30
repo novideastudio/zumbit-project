@@ -261,7 +261,7 @@ public partial class MainMenuController
         EditorUiHook(shake, ToggleScreenShake);
         shakeLabel = shake != null ? shake.GetComponentInChildren<TMP_Text>() : null;
 
-        EditorUiHook(EditorUiFind<Button>(s, "BtnBack"), () => Show("main"));
+        EditorUiHook(EditorUiFind<Button>(s, "BtnBack"), ReturnFromOptions);
     }
 
     void BindLoginFromPrefab(RectTransform s)

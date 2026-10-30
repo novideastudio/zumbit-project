@@ -26,6 +26,7 @@ public partial class MainMenuController
         nodePins.Clear();
         nodeBorders.Clear();
         pcCampaignNodes.Clear();
+        pcCampaignNodeBadges.Clear();
         pcCampaignPins.Clear();
 
         var s = Rebuild("map");
@@ -341,7 +342,7 @@ public partial class MainMenuController
             if (!kv.Value) continue;
             bool sel = kv.Key == loc.id;
             Color baseBorder = nodeBorders.TryGetValue(kv.Key, out var bc) ? bc : Color.gray;
-            kv.Value.effectColor = sel ? UIKit.Col.Gold : baseBorder;
+            kv.Value.effectColor = sel ? new Color(1f, 0.23f, 0.035f, 1f) : baseBorder;
             kv.Value.effectDistance = sel ? new Vector2(3f, -3f) : new Vector2(1.5f, -1.5f);
             if (nodePins.TryGetValue(kv.Key, out var pin) && pin) pin.SetActive(sel);
             if (sel) kv.Value.transform.SetAsLastSibling();   // o selecionado fica por cima dos vizinhos
@@ -358,10 +359,12 @@ public partial class MainMenuController
         if (hubBadge) hubBadge.text = MapDisplayNumber(loc).ToString("00");
         if (dName) dName.text = MapDisplayName(loc);
         if (dDesc) dDesc.text = loc.description;
-        if (hubStatA) hubStatA.text = $"<size=72%><color={dim}>NÍVEL RECOMENDADO</color></size>\n<size=150%><b><color={lvlColor}>{loc.recommendedLevel}</color></b></size>";
-        if (hubStatB) hubStatB.text = $"<size=72%><color={dim}>ONDAS</color></size>\n<size=150%><b>{loc.waves}</b></size>";
+        if (hubRecLevel) hubRecLevel.text = $"NÍVEL RECOMENDADO  <b><color={lvlColor}>{loc.recommendedLevel}</color></b>";
+        if (hubStatA) hubStatA.text = $"<size=72%><color={dim}>ONDAS</color></size>\n<size=150%><b>{loc.waves}</b></size>";
+        if (hubStatB) hubStatB.text = $"<size=72%><color={dim}>INIMIGOS</color></size>\n<size=145%><b>{LocationDef.DifficultyName(loc.difficulty)}</b></size>";
         if (hubStatC) hubStatC.text = $"<color={dim}>Dificuldade:</color> <b><color=#FFD84A>{LocationDef.DifficultyName(loc.difficulty)}</color></b> ({loc.difficulty}/5)";
-        if (hubStatD) hubStatD.text = $"<size=72%><color={dim}>RECOMPENSA</color></size>\n<size=145%><b><color=#FFC24B>● {loc.goldReward}</color></b></size>";
+        if (hubStatD) hubStatD.text = $"<size=72%><color={dim}>RECOMPENSA</color></size>\n<size=145%><b><color=#FFC24B>{loc.goldReward}</color></b></size>";
+        if (pcCampaignCompletionIcon) pcCampaignCompletionIcon.SetActive(done && unlocked);
 
         string note = "";
         if (!unlocked) note = "<color=#FF8888>Bloqueado: conclua " + RequirementNames(loc) + ".</color>";
@@ -371,7 +374,8 @@ public partial class MainMenuController
 
         if (selectedLocationPreview)
         {
-            Sprite hero = ArtLoader.Get("Art/Map/Locations/" + loc.id);
+            Sprite hero = ArtLoader.Get(CampaignThumbnailPath(loc));
+            if (hero == null) hero = ArtLoader.Get("Art/Map/Locations/" + loc.id);
             if (hero == null) hero = ArtLoader.Get(SceneBackgrounds.PathFor(loc));
             selectedLocationPreview.sprite = hero;
             selectedLocationPreview.color = hero == null ? new Color(0.12f, 0.16f, 0.18f, 1f)

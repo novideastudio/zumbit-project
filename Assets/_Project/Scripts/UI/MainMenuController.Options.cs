@@ -46,7 +46,14 @@ public partial class MainMenuController
         UIFactory.Elem(shake.gameObject, 700, 70);
         shakeLabel = shake.GetComponentInChildren<TMP_Text>();
 
-        BackButton(s, "Voltar", () => Show("main"), 0, "BtnBack");
+        BackButton(s, "Voltar", ReturnFromOptions, 0, "BtnBack");
+    }
+
+    void ReturnFromOptions()
+    {
+        string destination = string.IsNullOrEmpty(optionsReturnScreen) ? "main" : optionsReturnScreen;
+        optionsReturnScreen = null;
+        Show(destination);
     }
 
     void RefreshOptions()

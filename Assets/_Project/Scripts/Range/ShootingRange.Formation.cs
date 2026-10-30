@@ -115,6 +115,7 @@ public partial class ShootingRange
         trainingMessage=UIFactory.Txt(strip,"",15,TextAlignmentOptions.Center,UIKit.Col.TextDim,"Hint");
         UIFactory.Stretch(trainingMessage.rectTransform,0.01f,0.01f,0.99f,0.17f);
         RefreshTrainingFormationUi();
+        ApplyPcRangeFormation();
     }
     void RefreshTrainingFormationUi()
     {
@@ -122,6 +123,7 @@ public partial class ShootingRange
             UIFactory.SetButtonColor(kv.Value,trainingOrder.Contains(kv.Key)?new Color(0.15f,0.35f,0.25f):new Color(0.06f,0.09f,0.12f));
 
         if(trainingMessage) trainingMessage.text="Selecione de 1 a 3 sobreviventes. Cada alteração zera o DPS. Não altera a formação da campanha.";
+        RefreshPcRangeFormation();
     }
     void ToggleTrainingActor(string id)
     {

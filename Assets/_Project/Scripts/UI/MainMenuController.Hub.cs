@@ -9,7 +9,7 @@ using UnityEngine.UI;
 public partial class MainMenuController
 {
     // ---- estado do painel de missao ----
-    TMP_Text hubBadge, hubStatA, hubStatB, hubStatC, hubStatD;
+    TMP_Text hubBadge, hubStatA, hubStatB, hubStatC, hubStatD, hubRecLevel;
     RectTransform hubEnemyRow;
     AspectRatioFitter hubHeroFitter;
     readonly Dictionary<string, GameObject> nodePins = new Dictionary<string, GameObject>();

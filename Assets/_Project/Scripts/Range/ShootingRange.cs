@@ -119,6 +119,7 @@ public partial class ShootingRange : MonoBehaviour
     {
         var hud = FindFirstObjectByType<HudController>();
         if (hud != null && hud.waveText != null) hud.waveText.text = "ESTANDE DE TIRO";
+        HidePcLegacyRangeHud();
     }
 
     // =====================================================================
@@ -141,6 +142,7 @@ public partial class ShootingRange : MonoBehaviour
         rangeCamera.transform.position = new Vector3(hero.position.x + centerOffset,
             originalCameraPosition.y, originalCameraPosition.z);
         rangeCameraAdjusted = true;
+        ApplyPcRangeCamera();
     }
 
     void RestoreRangeCamera()
@@ -221,7 +223,7 @@ public partial class ShootingRange : MonoBehaviour
 
         float y = laneY - 0.12f;
         int max = Mathf.FloorToInt(MaxX - hero.position.x);
-        for (int d = 2; d <= max; d++)
+        for (int d = 0; d <= max; d++)
         {
             bool major = d % 2 == 0;
             Tick(hero.position.x + d, y, major ? 0.34f : 0.18f, new Color(1f, 1f, 1f, major ? 0.7f : 0.4f));
@@ -336,12 +338,14 @@ public partial class ShootingRange : MonoBehaviour
 
         RefreshPresetButtons();
         RefreshButtons();
+        ApplyPcRangeUi();
     }
 
     void RefreshPresetButtons()
     {
         for (int i = 0; i < presetButtons.Count; i++)
             UIFactory.SetButtonColor(presetButtons[i], i == presetIndex ? new Color(0.36f, 0.07f, 0.09f, 1f) : new Color(0.075f, 0.10f, 0.13f, 0.96f));
+        RefreshPcRangeButtons();
     }
 
     void SelectPreset(int i)
@@ -386,6 +390,7 @@ public partial class ShootingRange : MonoBehaviour
         if (lifeButtonLabel != null) lifeButtonLabel.text = infiniteLife ? "VIDA: INFINITA" : "VIDA: NORMAL";
         if (lifeButton != null)
             UIFactory.SetButtonColor(lifeButton, infiniteLife ? new Color(0.12f, 0.38f, 0.24f, 1f) : new Color(0.075f, 0.10f, 0.13f, 0.96f));
+        RefreshPcRangeButtons();
     }
 
     // =====================================================================
@@ -412,61 +417,6 @@ public partial class ShootingRange : MonoBehaviour
 
     void RefreshStats()
     {
-        if (statsLeftText == null || statsRightText == null || hero == null) return;
-        var p = Presets[presetIndex];
-
-        // DPS teorico: soma de todo o esquadrao (habilidades nao entram; o medido inclui tudo).
-        float burst = 0f, sustained = 0f, avgHit = 0f;
-        if (HeroSquad.Count > 0)
-        {
-            foreach (var m in HeroSquad.Members)
-            {
-                if (m == null) continue;
-                var h = m.hero != null ? m.hero : (m.stats != null ? m.stats.GetComponent<Hero>() : null);
-                DpsTracker.Theoretical(h, out float b, out float s, out float a);
-                burst += b;
-                sustained += s;
-                if (a > avgHit) avgHit = a;
-            }
-        }
-        else DpsTracker.Theoretical(hero.GetComponent<Hero>(), out burst, out sustained, out avgHit);
-
-        float defPct = Health.UsePercentDefense ? p.defense / (p.defense + Health.DefenseHalfPoint) * 100f : 0f;
-        bool outOfRange = dummies.Count > 0 && dummies[0] != null && distance > ReachX() + 0.05f;
-        string state = Tracker.Paused ? "<color=#FFC24B>PAUSADO</color>"
-            : !Tracker.Started ? "<color=#9AA6B2>AGUARDANDO TIRO</color>"
-            : "<color=#48DE7C>MEDINDO</color>";
-
-        // Coluna esquerda: medicao real, em tres linhas compactas.
-        leftSb.Clear();
-        leftSb.Append("<b>").Append(state).Append("</b>  ·  Tempo <b>").Append(Clock(Tracker.Elapsed)).Append("</b>\n");
-        leftSb.Append("DANO TOTAL <b><color=#FFC24B>").Append(N0(Tracker.Total)).Append("</color></b>  ·  DPS 5s <b>")
-            .Append(N0(Tracker.DpsWindow())).Append("</b>\n");
-        leftSb.Append("DPS médio <b>").Append(N0(Tracker.DpsSession)).Append("</b>  ·  Pico <b>").Append(N0(Tracker.PeakDps)).Append("</b>");
-        statsLeftText.text = leftSb.ToString();
-
-        // Coluna direita: estimativas, precisao, alvo e, quando habilitado, abates/TTK.
-        rightSb.Clear();
-        rightSb.Append("Teórico <b>").Append(N0(burst)).Append("</b>  ·  Sustentado <b>").Append(N0(sustained)).Append("</b>\n");
-        rightSb.Append("Acertos <b>").Append(Tracker.Hits).Append("</b>  ·  Críticos <b>")
-            .Append(Mathf.RoundToInt(Tracker.CritRate * 100f)).Append("%</b>\n");
-        rightSb.Append("Maior <b>").Append(N0(Tracker.MaxHit)).Append("</b>  ·  Médio <b>")
-            .Append(N0(Tracker.AvgHit)).Append("</b>\n");
-        rightSb.Append("Alvo <b>").Append(p.name).Append("</b>");
-        if (p.count > 1) rightSb.Append(" x").Append(p.count);
-        rightSb.Append("  ·  ");
-        if (infiniteLife) rightSb.Append("Vida <b>INFINITA</b>");
-        else rightSb.Append("Vida <b>").Append(N0(p.hp)).Append(" HP</b>");
-        if (defPct > 0f) rightSb.Append("  ·  <color=#9AA6B2>-").Append(Mathf.RoundToInt(defPct)).Append("% dano</color>");
-        if (!infiniteLife)
-        {
-            rightSb.Append("\nAbates <b>").Append(Tracker.Kills).Append("</b>  ·  TTK ");
-            if (Tracker.Kills > 0) rightSb.Append(N1(Tracker.LastTtk)).Append("s (média ").Append(N1(Tracker.AvgTtk)).Append("s)");
-            else rightSb.Append("<color=#9AA6B2>-</color>");
-        }
-        if (outOfRange) rightSb.Append("\n<color=#FF5050>FORA DE ALCANCE: aproxime o alvo</color>");
-        statsRightText.text = rightSb.ToString();
-
-        if (distLabel != null) distLabel.text = "DISTÂNCIA " + ND(distance) + "m";
+        RefreshPcRangeStats();
     }
 }
