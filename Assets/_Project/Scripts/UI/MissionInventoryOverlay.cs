@@ -16,7 +16,7 @@ using UnityEngine.UI;
 /// Todo texto e de linha unica com truncamento/auto-ajuste, entao nada vaza para fora das molduras.
 /// A missao NAO pausa enquanto a mochila esta aberta.
 /// </summary>
-public sealed class MissionInventoryOverlay : MonoBehaviour
+public sealed partial class MissionInventoryOverlay : MonoBehaviour
 {
     static MissionInventoryOverlay instance;
     static int closedFrame = -1;
@@ -99,6 +99,7 @@ public sealed class MissionInventoryOverlay : MonoBehaviour
 
     void Update()
     {
+        RefreshSharedLiveInventory();
         var kb = Keyboard.current;
         if (kb != null && kb.escapeKey.wasPressedThisFrame) Close();   // [I] e tratado pelo PanelToggle
     }
@@ -171,6 +172,7 @@ public sealed class MissionInventoryOverlay : MonoBehaviour
     // ---------- tela ----------
     void Rebuild()
     {
+        CaptureSharedInventoryScroll();
         if (screen) { screen.gameObject.SetActive(false); Destroy(screen.gameObject); }
         screen = UIFactory.Node("MissionInventory", canvas.transform);
         UIFactory.Stretch(screen);
@@ -182,36 +184,7 @@ public sealed class MissionInventoryOverlay : MonoBehaviour
         if (selected == null && visibleBag.Count > 0) selected = visibleBag[0];
         bool selectedEquipped = IsEquipped(selected);
 
-        BuildBackdrop();
-        BuildHeader();
-
-        var content = UIFactory.Node("InventoryContent", screen);
-        InvAnchor(content, 0f, 0f, 1f, 0.915f, 20f, 14f, -20f, -12f);
-
-        var detailsPanel = UIKit.Panel(content, "MapItemDetailsPanel", "Detalhes do item");
-        InvAnchor(detailsPanel, 1f, 0f, 1f, 1f, -InvDetailsW, 0f, 0f, 0f);
-
-        var left = UIFactory.Node("InventoryLeft", content);
-        InvAnchor(left, 0f, 0f, 1f, 1f, 0f, 0f, -(InvDetailsW + InvGap), 0f);
-
-        var topRow = UIFactory.Node("InventoryTopRow", left);
-        InvAnchor(topRow, 0f, 1f, 1f, 1f, 0f, -InvTopH, 0f, 0f);
-
-        var equipmentPanel = UIKit.Panel(topRow, "MapEquipmentPanel", "Equipamento do sobrevivente");
-        InvAnchor(equipmentPanel, 0f, 0f, 0f, 1f, 0f, 0f, InvEquipW, 0f);
-
-        var statsPanel = UIKit.Panel(topRow, "MapStatsPanel", "Atributos do sobrevivente");
-        InvAnchor(statsPanel, 0f, 0f, 1f, 1f, InvEquipW + InvGap, 0f, 0f, 0f);
-
-        var backpackPanel = UIKit.Panel(left, "MapBackpackPanel", "Mochila de campo");
-        InvAnchor(backpackPanel, 0f, 0f, 1f, 1f, 0f, 0f, 0f, -(InvTopH + InvGap));
-
-        BuildEquipmentPanel(equipmentPanel);
-        BuildStatsPanel(statsPanel);
-        BuildBackpackPanel(backpackPanel, visibleBag);
-        BuildItemDetails(detailsPanel, selected, selectedEquipped);
-
-        if (toast) toast.transform.SetAsLastSibling();
+        BuildSharedMissionInventory(visibleBag, selectedEquipped);
     }
 
     void BuildBackdrop()
@@ -462,52 +435,7 @@ public sealed class MissionInventoryOverlay : MonoBehaviour
     //   MELHORIA | BOTAS
     void BuildEquipmentPanel(RectTransform panel)
     {
-        const float slotSize = 72f;
-        const float margin = 24f;
-        float rightX = InvEquipW - margin - slotSize;
-        float mannequinX = margin + slotSize + 12f;
-        float mannequinW = InvEquipW - mannequinX * 2f;
-        SurvivorDef def = Def();
-
-        var glow = UIFactory.Img(panel, new Color(0.06f, 0.10f, 0.12f, 1f), "MannequinBackdrop");
-        UIKit.ApplyChamfer(glow, glow.color);
-        UIFactory.Place(glow.rectTransform, TL, new Vector2(mannequinX, -62f), new Vector2(mannequinW, 288f));
-        glow.raycastTarget = false;
-
-        var mannequinNode = UIFactory.Node("EquipmentMannequin", panel);
-        UIFactory.Place(mannequinNode, TL, new Vector2(mannequinX + 6f, -68f), new Vector2(mannequinW - 12f, 276f));
-        Image mannequin = mannequinNode.gameObject.AddComponent<Image>();
-        mannequin.sprite = InventoryMannequin.Get(def);
-        if (mannequin.sprite == null) mannequin.sprite = PortraitSprite(def);
-        mannequin.preserveAspect = true;
-        mannequin.raycastTarget = false;
-        mannequin.color = mannequin.sprite != null ? Color.white : new Color(0.55f, 0.61f, 0.64f, 1f);
-
-        float row0 = 62f, row1 = 160f, row2 = 258f;
-        CreateEquipmentSlot(panel, ItemSlot.Capacete, "CAPACETE", margin, row0, slotSize);
-        CreateEquipmentSlot(panel, ItemSlot.Colete, "COLETE", rightX, row0, slotSize);
-        CreateEquipmentSlot(panel, ItemSlot.Mochila, "MOCHILA", margin, row1, slotSize);
-        CreateEquipmentSlot(panel, ItemSlot.Calca, "CALÇAS", rightX, row1, slotSize);
-        CreateEquipmentSlot(panel, ItemSlot.Arma, "MELHORIA", margin, row2, slotSize);
-        CreateEquipmentSlot(panel, ItemSlot.Botas, "BOTAS", rightX, row2, slotSize);
-
-        var sep = UIFactory.Img(panel, UIKit.Col.Border, "SurvivorStripSeparator");
-        InvAnchor(sep.rectTransform, 0f, 0f, 1f, 0f, 14f, 90f, -14f, 91f);
-        sep.raycastTarget = false;
-
-        var strip = UIFactory.Node("SurvivorStrip", panel);
-        InvAnchor(strip, 0f, 0f, 1f, 0f, 14f, 6f, -14f, 84f);
-        var h = UIFactory.HLayout(strip, 8f, TextAnchor.MiddleCenter);
-        h.childForceExpandWidth = false;
-        h.childForceExpandHeight = false;
-        // Um retrato por sobrevivente do esquadrao: clique para editar o equipamento dele.
-        var members = new List<PlayerStats>();
-        for (int i = 0; i < HeroSquad.Members.Count; i++)
-            if (HeroSquad.Members[i].stats) members.Add(HeroSquad.Members[i].stats);
-        if (members.Count == 0 && stats) members.Add(stats);
-        int n = Mathf.Max(1, members.Count);
-        float chipW = Mathf.Floor(Mathf.Min(84f, ((InvEquipW - 28f) - 8f * (n - 1)) / n));
-        foreach (var m in members) BuildSurvivorChip(strip, m, chipW);
+        BuildSharedMissionEquipment();
     }
 
     void CreateEquipmentSlot(RectTransform parent, ItemSlot slot, string label, float x, float labelY, float size)

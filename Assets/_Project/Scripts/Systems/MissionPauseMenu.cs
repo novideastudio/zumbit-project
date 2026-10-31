@@ -32,6 +32,20 @@ public class MissionPauseMenu : MonoBehaviour
         if (!isOpen) OpenPause();
     }
 
+    /// <summary>Abre diretamente a confirmacao de retorno ao mapa, usada pelo botao ao lado da mochila.</summary>
+    public void OpenExitConfirmation()
+    {
+        if (flow == null) flow = FindFirstObjectByType<MissionFlow>();
+        if (flow != null && flow.IsFinished) return;
+        if (!isOpen)
+        {
+            isOpen = true;
+            confirmingExit = false;
+            Time.timeScale = 0f;
+        }
+        BuildExitConfirmation();
+    }
+
     void OpenPause()
     {
         if (flow != null && flow.IsFinished) return;

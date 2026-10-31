@@ -96,6 +96,74 @@ public static class SpriteMetrics
         return true;
     }
 
+    // Limit automatic muzzle detection to the weapon-height band, excluding legs and boots.
+    static readonly Dictionary<(Sprite, int, int), Vector2?> bandMuzzleCache =
+        new Dictionary<(Sprite, int, int), Vector2?>();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetBandMuzzleCache() => bandMuzzleCache.Clear();
+
+    public static bool TryGetMuzzleUV(Sprite sprite, Vector2 hintUV, float halfBandUV, out Vector2 uv)
+    {
+        uv = default;
+        if (sprite == null) return false;
+        if (halfBandUV <= 0f) return TryGetMuzzleUV(sprite, out uv);
+
+        var key = (sprite, Mathf.RoundToInt(hintUV.y * 1000f), Mathf.RoundToInt(halfBandUV * 1000f));
+        if (bandMuzzleCache.TryGetValue(key, out var cached))
+        {
+            if (!cached.HasValue) return false;
+            uv = cached.Value;
+            return true;
+        }
+
+        Vector2? result = null;
+        Texture2D tex = sprite.texture;
+        if (tex != null && tex.isReadable)
+        {
+            Rect r = sprite.rect;
+            int x0 = Mathf.RoundToInt(r.x), y0 = Mathf.RoundToInt(r.y);
+            int w = Mathf.RoundToInt(r.width), h = Mathf.RoundToInt(r.height);
+            if (w > 0 && h > 0)
+            {
+                Color32[] px = tex.GetPixels32();
+                int texW = tex.width;
+                int yMin = Mathf.Clamp(Mathf.FloorToInt((hintUV.y - halfBandUV) * h), 0, h - 1);
+                int yMax = Mathf.Clamp(Mathf.CeilToInt((hintUV.y + halfBandUV) * h), 0, h - 1);
+                int xmax = -1;
+                for (int x = w - 1; x >= 0 && xmax < 0; x--)
+                    for (int y = yMin; y <= yMax; y++)
+                        if (px[(y0 + y) * texW + x0 + x].a > AlphaThreshold)
+                        {
+                            xmax = x;
+                            break;
+                        }
+
+                if (xmax >= 0)
+                {
+                    int band = Mathf.Max(2, Mathf.RoundToInt(w * 0.02f));
+                    int xmin = Mathf.Max(0, xmax - band);
+                    int yLo = int.MaxValue, yHi = -1;
+                    for (int y = yMin; y <= yMax; y++)
+                        for (int x = xmin; x <= xmax; x++)
+                            if (px[(y0 + y) * texW + x0 + x].a > AlphaThreshold)
+                            {
+                                if (y < yLo) yLo = y;
+                                if (y > yHi) yHi = y;
+                                break;
+                            }
+                    if (yHi >= 0)
+                        result = new Vector2((xmax + 1f) / w, ((yLo + yHi) * 0.5f + 0.5f) / h);
+                }
+            }
+        }
+
+        bandMuzzleCache[key] = result;
+        if (!result.HasValue) return false;
+        uv = result.Value;
+        return true;
+    }
+
     static Metrics Measure(Sprite sprite)
     {
         Rect r = sprite.rect;

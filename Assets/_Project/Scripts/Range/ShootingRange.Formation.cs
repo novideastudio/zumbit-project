@@ -49,6 +49,7 @@ public partial class ShootingRange
             trainingWeapons.Add(w);
             h.weapon = w;
             h.muzzleUV = def.muzzleUV;
+            h.muzzleSearchBandUV = 0.12f;
             var p = GameSession.Save.GetProgress(def.id);
             var b = SkillTreeSystem.GetBonuses(def.id, p);
             h.damageMult = def.damageMult * (1f + b.damagePercent);

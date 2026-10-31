@@ -71,7 +71,7 @@ public sealed class SquadCombatPosture : MonoBehaviour
     }
     void RefreshLabel()
     {
-        if(label != null) label.text=offensive ? "POSTURA: OFENSIVA\n<size=65%>Toque para manter posição</size>" : "POSTURA: DEFENSIVA\n<size=65%>Toque para avançar</size>";
+        if(label != null) label.text=offensive ? "POSTURA: OFENSIVA\n<size=65%>Clique / toque para manter posição</size>" : "POSTURA: DEFENSIVA\n<size=65%>Clique / toque para avançar</size>";
         if(toggle != null) UIFactory.SetButtonColor(toggle,offensive?new Color(0.40f,0.10f,0.08f,0.96f):new Color(0.06f,0.10f,0.13f,0.95f));
     }
     void Update()
@@ -148,6 +148,29 @@ public sealed class SquadCombatPosture : MonoBehaviour
             if(best<=Mathf.Max(0.5f,horizontal-rangeMargin)) desired=h.transform.position.x;
             a.goal=Mathf.Max(a.homeX,desired);
         }
+    }
+    /// <summary>Applies a new front-to-back order and seat X positions. Returns false if members are not tracked.</summary>
+    public bool ApplySeatOrder(IList<HeroSquad.Member> frontToBack, IList<float> homeXs)
+    {
+        if (frontToBack == null || homeXs == null || frontToBack.Count != homeXs.Count || frontToBack.Count != actors.Count) return false;
+        var sorted = new List<Actor>(actors.Count);
+        for (int i = 0; i < frontToBack.Count; i++)
+        {
+            Actor found = null;
+            for (int k = 0; k < actors.Count; k++)
+                if (actors[k].member == frontToBack[i]) { found = actors[k]; break; }
+            if (found == null) return false;
+            sorted.Add(found);
+        }
+        for (int i = 0; i < sorted.Count; i++)
+        {
+            sorted[i].homeX = homeXs[i];
+            sorted[i].goal = homeXs[i];
+            sorted[i].retreating = false;
+        }
+        actors.Clear();
+        actors.AddRange(sorted);
+        return true;
     }
     void OnDestroy() { if(postureCanvas) Destroy(postureCanvas.gameObject); }
 }

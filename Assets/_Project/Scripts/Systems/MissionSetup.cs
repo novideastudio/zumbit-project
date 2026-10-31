@@ -245,6 +245,8 @@ public class MissionSetup : MonoBehaviour
         // Offensive posture is opt-in and never installed in DPS training.
         if (!GameSession.IsRange && GetComponent<SquadCombatPosture>() == null)
             gameObject.AddComponent<SquadCombatPosture>();
+        if (!GameSession.IsRange && squadSize > 1 && GetComponent<SquadFormationSwap>() == null)
+            gameObject.AddComponent<SquadFormationSwap>();
     }
 
     /// <summary>Arma, atributos, progresso, sprite e posicao de UM sobrevivente.</summary>
@@ -253,6 +255,7 @@ public class MissionSetup : MonoBehaviour
     {
         var hero = stats.GetComponent<Hero>();
         hero.muzzleUV = s.muzzleUV;
+        hero.muzzleSearchBandUV = 0.12f;
         // Arma exclusiva do sobrevivente (M4A1, SCAR-20, MP5-SD, M249 ou MAC-10). Copia o template
         // da cena para manter o prefab do projetil. Precisa vir ANTES do SurvivorAbilities (a torreta
         // do Engineer clona hero.weapon) e roda no Awake, antes do Hero.Start encher o pente.
@@ -274,7 +277,10 @@ public class MissionSetup : MonoBehaviour
         stats.ApplyDifficulty(diff);   // XP do nivel + cura de level-up (0 no Dificil/Pesadelo)
         stats.SetProgress(prog.level, prog.xp);
 
-        if (hero.GetComponent<PixelCharacterMotion>() == null) hero.gameObject.AddComponent<PixelCharacterMotion>();
+        var characterMotion = hero.GetComponent<PixelCharacterMotion>();
+        if (characterMotion == null) characterMotion = hero.gameObject.AddComponent<PixelCharacterMotion>();
+        // A animacao ja movimenta o corpo; desliga o bob procedural apenas no Assaulter.
+        if (s.id == "assaulter") characterMotion.bobAmount = 0f;
 
         var sr = hero.GetComponent<SpriteRenderer>();
         var heroSprite = s.fullBody != null ? s.fullBody : ArtLoader.Get("Art/Characters/" + s.id + "_full");
@@ -299,5 +305,10 @@ public class MissionSetup : MonoBehaviour
             float feet = sr.bounds.min.y + SpriteMetrics.Get(sr.sprite).bottomPx / sr.sprite.pixelsPerUnit * Mathf.Abs(hero.transform.localScale.y);
             hero.transform.position += Vector3.up * (position.y - feet);
         }
+
+        // O Assaulter usa sprites de caminhada proprios; a direcao e lida do movimento
+        // horizontal real aplicado por SquadCombatPosture (avanco para direita, recuo para esquerda).
+        if (!GameSession.IsRange && s.id == "assaulter" && hero.GetComponent<AssaulterMovementAnimation>() == null)
+            hero.gameObject.AddComponent<AssaulterMovementAnimation>();
     }
 }

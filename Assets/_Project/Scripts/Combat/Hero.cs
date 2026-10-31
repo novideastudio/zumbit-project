@@ -10,6 +10,8 @@ public class Hero : MonoBehaviour
     public bool autoMuzzle = true;
     [Tooltip("Ajuste fino (em UV do sprite) somado ao ponto automatico. Ex.: x -0.01 recua 1% da largura.")]
     public Vector2 muzzleNudgeUV;
+    [Tooltip("Vertical search band around muzzleUV.y. Zero keeps legacy automatic detection.")]
+    public float muzzleSearchBandUV = 0f;
 
     [HideInInspector] public float damageBonus;
     [HideInInspector] public float damageMult = 1f;
@@ -59,7 +61,14 @@ public class Hero : MonoBehaviour
             Rect rect = sp.rect;
             // Posicao do ponto em pixels relativos ao pivot do sprite -> unidades locais -> mundo.
             Vector2 uv = muzzleUV;
-            if (autoMuzzle && SpriteMetrics.TryGetMuzzleUV(sp, out Vector2 auto)) uv = auto + muzzleNudgeUV;
+            if (autoMuzzle)
+            {
+                Vector2 auto;
+                bool found = muzzleSearchBandUV > 0f
+                    ? SpriteMetrics.TryGetMuzzleUV(sp, muzzleUV, muzzleSearchBandUV, out auto)
+                    : SpriteMetrics.TryGetMuzzleUV(sp, out auto);
+                if (found) uv = auto + muzzleNudgeUV;
+            }
             Vector2 px = new Vector2(uv.x * rect.width - sp.pivot.x,
                                      uv.y * rect.height - sp.pivot.y);
             if (sr.flipX) px.x = -px.x;

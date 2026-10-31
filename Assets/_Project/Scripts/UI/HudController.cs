@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// HUD de combate (layout de jogo moderno):
 ///  - Canto superior ESQUERDO: nome da fase, dificuldade, FASE/WAVE x/y com o tempo e abates (+ zumbis vivos).
-///  - Canto superior DIREITO: somente o icone da MOCHILA (clicavel, atalho [I]).
+///  - Canto superior DIREITO: retorno ao mapa (confirmado) e icone da MOCHILA (clicavel, atalho [I]).
 ///  - EMBAIXO, a esquerda: um cartao compacto por sobrevivente do esquadrao (1 a 3), lado a lado,
 ///    cada um com vida, XP, arma/municao/recarga e a PROPRIA habilidade.
 ///  - EMBAIXO, no centro: botao da Onda de choque / Empurrar zumbi [ESPACO] (clicavel) + dica do foco por clique.
@@ -46,10 +46,12 @@ public class HudController : MonoBehaviour
 
     // ---- medidas (resolucao de referencia 1920x1080) ----
     const float Margin = 16f;
-    const float CardW = 316f, CardH = 128f, CardGap = 12f;
+    const float CardW = 340f, CardH = 136f, CardGap = 12f;
     const float ShockW = 240f;
     const float RefWidth = 1920f;      // largura de referencia do CanvasScaler
     const float BackpackSize = 92f;
+    const float BackButtonWidth = 82f;
+    const float HeaderButtonGap = 10f;
 
     static readonly Color PlateFill = new Color(0.01f, 0.02f, 0.03f, 0.84f);
     static readonly Color HudDim = new Color(0.62f, 0.72f, 0.76f, 1f);
@@ -142,6 +144,36 @@ public class HudController : MonoBehaviour
         HandleHotkeys();
     }
 
+    // Seat order chosen during the mission (front to back). Empty = default HeroSquad order.
+    readonly List<HeroSquad.Member> seatOrder = new List<HeroSquad.Member>();
+
+    /// <summary>Rebuilds the squad cards in the given front-to-back order (called by SquadFormationSwap).</summary>
+    public void ApplySeatOrder(IList<HeroSquad.Member> order)
+    {
+        seatOrder.Clear();
+        if (order != null)
+            for (int i = 0; i < order.Count; i++)
+                if (order[i] != null) seatOrder.Add(order[i]);
+        builtSquadCount = -1;   // Update() rebuilds the cards using this order
+    }
+
+    IEnumerable<HeroSquad.Member> OrderedSquadMembers()
+    {
+        if (seatOrder.Count > 0 && seatOrder.Count == HeroSquad.Count)
+        {
+            bool sameMembers = true;
+            for (int i = 0; i < seatOrder.Count && sameMembers; i++)
+            {
+                bool found = false;
+                for (int k = 0; k < HeroSquad.Members.Count; k++)
+                    if (HeroSquad.Members[k] == seatOrder[i]) { found = true; break; }
+                sameMembers = found;
+            }
+            if (sameMembers) return seatOrder;
+        }
+        return HeroSquad.Members;
+    }
+
     // ---------- construcao ----------
     void BuildHud()
     {
@@ -151,6 +183,7 @@ public class HudController : MonoBehaviour
         HideLegacyWidgets();
         BuildWavePlate();
         BuildAccountPlate();
+        BuildBackButton();
         BuildShockPlate();
         if (GameSession.IsRange && shockPlate != null) { shockPlate.anchorMin = shockPlate.anchorMax = new Vector2(1f, 0f); shockPlate.pivot = new Vector2(1f, 0f); shockPlate.anchoredPosition = new Vector2(-16f, 230f); }
         BuildSquadCards();
@@ -292,6 +325,49 @@ public class HudController : MonoBehaviour
         hit.transform.SetAsLastSibling();
     }
 
+    /// <summary>Botao de retorno ao lado da mochila. Abre a pausa para confirmar a saida
+    /// e deixa claras as penalidades de abandonar uma missao em andamento.</summary>
+    void BuildBackButton()
+    {
+        var backPlate = MakePlate("HudPlate_BackToMap", new Vector2(1f, 1f),
+            new Vector2(-(Margin + BackpackSize + HeaderButtonGap), -Margin),
+            new Vector2(BackButtonWidth, BackpackSize), new Color(0.95f, 0.20f, 0.16f, 1f));
+
+        // Seta grande no centro superior. O texto permanece separado para facilitar
+        // a substituicao do icone diretamente no Unity mais tarde.
+        var arrow = UIFactory.Txt(backPlate, "\u2190", 42f, TextAlignmentOptions.Center,
+            new Color(1f, 0.91f, 0.78f, 1f), "HudBackToMapArrow");
+        arrow.fontStyle = FontStyles.Bold;
+        arrow.raycastTarget = false;
+        Put(arrow.rectTransform, backPlate, 4f, 7f, BackButtonWidth - 8f, 48f);
+
+        var caption = UIFactory.Txt(backPlate, "VOLTAR", 10f, TextAlignmentOptions.Center,
+            new Color(1f, 0.82f, 0.72f, 1f), "HudBackToMapLabel");
+        caption.fontStyle = FontStyles.Bold;
+        caption.characterSpacing = 1.2f;
+        caption.raycastTarget = false;
+        Put(caption.rectTransform, backPlate, 3f, 58f, BackButtonWidth - 6f, 18f);
+
+        var hit = UIFactory.Img(backPlate, new Color(1f, 1f, 1f, 0f), "HudBackToMapHit");
+        UIFactory.Stretch(hit.rectTransform);
+        hit.raycastTarget = true;
+        var btn = hit.gameObject.AddComponent<Button>();
+        btn.targetGraphic = arrow;
+        btn.transition = Selectable.Transition.ColorTint;
+        var colors = btn.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(1f, 0.72f, 0.62f, 1f);
+        colors.pressedColor = new Color(0.78f, 0.48f, 0.42f, 1f);
+        colors.fadeDuration = 0.08f;
+        btn.colors = colors;
+        btn.onClick.AddListener(() =>
+        {
+            ZombitAudio.PlayUI();
+            OpenReturnConfirmation();
+        });
+        hit.transform.SetAsLastSibling();
+    }
+
     void BuildShockPlate()
     {
         shockPlate = MakePlate("HudPlate_Shock", new Vector2(0.5f, 0f), new Vector2(0f, Margin), new Vector2(ShockW, CardH), UIKit.Col.Cyan);
@@ -332,7 +408,7 @@ public class HudController : MonoBehaviour
         if (GameSession.IsRange) { builtSquadCount = Mathf.Max(1, HeroSquad.Count); return; }
 
         var members = new List<(PlayerStats ps, SurvivorDef def)>();
-        if (HeroSquad.Count > 0) foreach (var m in HeroSquad.Members) members.Add((m.stats, m.def));
+        if (HeroSquad.Count > 0) foreach (var m in OrderedSquadMembers()) members.Add((m.stats, m.def));
         else if (stats) members.Add((stats, GameSession.Survivor));
         builtSquadCount = Mathf.Max(1, HeroSquad.Count);
         if (members.Count == 0) return;
@@ -392,7 +468,8 @@ public class HudController : MonoBehaviour
         var dotHolder = UIFactory.Node("AbilityDotHolder", c.root);
         Put(dotHolder, c.root, 19f, 104f, 1f, 1f);
         c.abilityDot = UIKit.Diamond(dotHolder, ReadyColor, 11f, "AbilityDot");
-        c.ability = Label(c.root, "", 12f, Color.white, "Ability", 30f, 94f, inner - 16f, 20f);
+        c.ability = Label(c.root, "", 11f, Color.white, "Ability", 30f, 94f, inner - 16f, 20f);
+        c.ability.characterSpacing = 0.35f;
         c.abilityFill = UIKit.Bar(c.root, ReadyColor, 1f, "AbilityBar");
         Put((RectTransform)c.abilityFill.transform.parent, c.root, 14f, 117f, inner, 3f);
         return c;
@@ -532,7 +609,7 @@ public class HudController : MonoBehaviour
         {
             lastShockKey = remain;
             if (remain < 0) { shockStatus.text = "INDISPONÍVEL"; shockStatus.color = HudDim; }
-            else if (remain == 0) { shockStatus.text = "PRONTA  ·  CLIQUE OU ESPAÇO"; shockStatus.color = ReadyColor; }
+            else if (remain == 0) { shockStatus.text = "PRONTA  ·  USE ESPAÇO"; shockStatus.color = ReadyColor; }
             else { shockStatus.text = $"RECARGA {remain}s"; shockStatus.color = CooldownColor; }
         }
         float ratio = a != null ? a.ShockReadyRatio : 0f;
@@ -561,6 +638,13 @@ public class HudController : MonoBehaviour
     {
         var p = FindFirstObjectByType<MissionPauseMenu>();
         if (p != null) p.Open();
+    }
+
+    void OpenReturnConfirmation()
+    {
+        var p = FindFirstObjectByType<MissionPauseMenu>();
+        if (p != null) p.OpenExitConfirmation();
+        else OpenPause();
     }
 
     // ---------- avisos ----------

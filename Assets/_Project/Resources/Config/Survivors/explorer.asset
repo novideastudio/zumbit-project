@@ -23,7 +23,7 @@ MonoBehaviour:
   color: {r: 0.8, g: 0.7, b: 0.45, a: 1}
   portrait: {fileID: 21300000, guid: d731ca5148d3853498d61800f33d6cf0, type: 3}
   fullBody: {fileID: 21300000, guid: a99aea0c54877044db3aeea89432ae15, type: 3}
-  heroHeight: 1.5
+  heroHeight: 2
   muzzleUV: {x: 0.935, y: 0.704}
   weaponId: mac10
   healthMult: 0.9

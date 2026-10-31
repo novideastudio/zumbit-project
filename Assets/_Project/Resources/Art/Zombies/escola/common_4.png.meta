@@ -14,12 +14,6 @@ TextureImporter:
   - first:
       213: 2898719585982359931
     second: common_4_3
-  - first:
-      213: 4590001974155186133
-    second: common_4_4
-  - first:
-      213: 6884791580048588025
-    second: common_4_5
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -127,7 +121,7 @@ TextureImporter:
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 4
-    buildTarget: iOS
+    buildTarget: WebGL
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
@@ -140,11 +134,11 @@ TextureImporter:
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 4
-    buildTarget: WebGL
-    maxTextureSize: 4096
+    buildTarget: iOS
+    maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 0
+    textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -159,10 +153,10 @@ TextureImporter:
       name: common_4_0
       rect:
         serializedVersion: 2
-        x: 1
-        y: 0
-        width: 311
-        height: 469
+        x: 29
+        y: 429
+        width: 154
+        height: 56
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -181,10 +175,10 @@ TextureImporter:
       name: common_4_1
       rect:
         serializedVersion: 2
-        x: 254
-        y: 447
-        width: 9
-        height: 7
+        x: 179
+        y: 454
+        width: 23
+        height: 36
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -203,10 +197,10 @@ TextureImporter:
       name: common_4_2
       rect:
         serializedVersion: 2
-        x: 268
-        y: 438
-        width: 25
-        height: 19
+        x: 197
+        y: 401
+        width: 115
+        height: 85
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -225,10 +219,10 @@ TextureImporter:
       name: common_4_3
       rect:
         serializedVersion: 2
-        x: 306
-        y: 154
-        width: 6
-        height: 17
+        x: 0
+        y: 0
+        width: 312
+        height: 397
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -239,50 +233,6 @@ TextureImporter:
       bones: []
       spriteID: b7922f9fa125a3820800000000000000
       internalID: 2898719585982359931
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: common_4_4
-      rect:
-        serializedVersion: 2
-        x: 142
-        y: 0
-        width: 18
-        height: 5
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 5df8cd30a76f2bf30800000000000000
-      internalID: 4590001974155186133
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: common_4_5
-      rect:
-        serializedVersion: 2
-        x: 240
-        y: 0
-        width: 12
-        height: 9
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 9fc75610771bb8f50800000000000000
-      internalID: 6884791580048588025
       vertices: []
       indices: 
       edges: []
